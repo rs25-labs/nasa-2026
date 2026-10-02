@@ -6,8 +6,6 @@ Scope: [Feature list F01–F12](./CLPS-FEATURES.md)
 
 **Goal:** deliver a working web application for terrain-aware lunar sunlight/Earth visibility, mission comparison, and landing-date exploration.
 
-**Execution agreement:** Codex generates plans and code. The user's Pi coding agent installs dependencies, runs preparation/build/deployment commands, executes code, and returns outputs. The owner handles testing, reviews those outputs, and authorizes subsequent batches. Codex does not launch subagents or execute application code. This document proposes work; it contains no implementation code or generated test suite.
-
 ## 1. Recommended approach
 
 Use a TypeScript React application for the interface and a Python FastAPI service for numerical calculations. Prepare/version NASA terrain and SPICE assets once; perform scenario calculations on the server for requested user inputs. Serve the finished application and API under one origin.
