@@ -1,5 +1,7 @@
 # SPHEREx Sky Change Investigator — Implementation Plan
 
+> **October 18, 2026 — earlier design reference.** The [current SPHEREx PRD](PRD-SPHEREX-SKY-CHANGE-INVESTIGATOR.md) supersedes conflicting scope in this document. Do not execute this earlier plan unchanged; reconcile code batches after owner PRD review.
+
 Date: October 18, 2026.
 Status: implementation proposal supporting the locked product choice.
 Scope: [S01–S10](SPHEREX-FEATURES.md).

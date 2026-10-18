@@ -1,5 +1,7 @@
 # SPHEREx Sky Change Investigator — Feature List
 
+> **October 18, 2026 — earlier design reference.** The [current SPHEREx PRD](PRD-SPHEREX-SKY-CHANGE-INVESTIGATOR.md) supersedes conflicting scope in this document. Do not execute this earlier plan unchanged; reconcile code batches after owner PRD review.
+
 Date: October 18, 2026.
 Status: product selected and core scope locked; detailed design proposed for owner review.
 Challenge: [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/)

@@ -1,77 +1,63 @@
-# NASA 2026 — Agreed Two-Application Build Plan
+# NASA 2026 — Two-Application Build and Review Plan
 
-Decision date: October 18, 2026.
-Status: **product pair and overall scope locked by the owner**. Detailed implementation batches remain subject to owner review.
-Repository: https://github.com/rs25-labs/nasa-2026
+Updated October 18, 2026.
 
-## The two applications
+## Current product direction and document authority
 
-| Entry | Product | Essential user outcome |
-|---|---|---|
-| CLPS Lunar Mission Browser | **Lunar Mission Planner** | Compare lunar sites and start dates against sunlight and geometric Earth-visibility requirements. |
-| Planet X and SPHEREx | **Sky Change Investigator** | Retrieve comparable sky observations, inspect temporal changes, and preserve an evidence-based investigation. |
+1. **Lunar Mission Lab:** CLPS planning plus a connected educational lunar-outpost simulation. [Authoritative proposed PRD](PRD-LUNAR-MISSION-LAB.md).
+2. **SPHEREx Sky Change Investigator:** archive retrieval, comparable images, and an annotated investigation workflow. [Authoritative proposed PRD](PRD-SPHEREX-SKY-CHANGE-INVESTIGATOR.md).
 
-Both are complete web applications within explicitly published data/compute limits. Users can supply new inputs, receive real results, inspect limitations, and save/share/export their work. Example cases use the same workflows as custom requests. No feature depends on a manually curated presentation sequence.
+The owner selected both products and requested these PRDs. Detailed requirements await their review. These PRDs supersede conflicting earlier scope; the older CLPS/SPHEREx feature lists and detailed implementation plans remain design references, not instructions to execute unchanged. Reconcile implementation batches after PRD approval.
 
-## Execution agreement
+## Review checkpoints
 
-- Codex designs the system and generates documentation, code, and concise Pi handoffs.
-- Pi installs dependencies, runs retrieval/preparation and application code, builds, and deploys.
-- The owner reviews returned artifacts, handles testing, and directs the next batch.
-- Codex launches no subagents and executes no application code or tests.
-- No extensive generated test suite. Code batches include only essential review artifacts and exact Pi execution instructions.
-- A failed checkpoint returns a concrete cause and one bounded next action. No unapproved scope expansion, model search, or open-ended scientific investigation.
-- Product selection is approved. This documentation update does not authorize automatic execution of all implementation batches.
-
-## Six shared review checkpoints
-
-These are coordination checkpoints for two independently deployable applications, not a combined application. Finish both foundations before investing in either full interface. Within a checkpoint, Pi runs one bounded batch at a time; the owner controls progression.
-
-| Checkpoint | CLPS delivery | SPHEREx delivery | Owner review |
+| Checkpoint | Lunar Mission Lab | SPHEREx | Review outcome |
 |---|---|---|---|
-| 1. Product agreement | Retain F01–F12 scope and explicit geometric interpretation | Approve S01–S10 and user-guided investigation scope | Pair/scope locked; review detailed feature/implementation documents before code |
-| 2. Data/calculation foundation | Terrain/kernel manifests, horizon, Sun/Earth positions, one scenario's metrics | Archive queries, cutouts, matched image pair, registration/quality metadata | Real outputs, coverage, runtime, and whether the scientific basis is sound |
-| 3. First working workflow | Custom coordinate/date → job → sky/timeline/summary | Custom sky coordinate/date query → observations → comparison viewer | New user inputs work end to end |
-| 4. Essential features complete | Three-scenario comparison and landing-date search | Wavelength/time selection, quality overlays, annotations, investigation workspace | Complete core decision/investigation workflow |
-| 5. Persistence and usability | Named local scenarios, shared inputs, CSV/JSON exports | Named investigations, share/import/export, evidence bundles | Save/reopen behavior, responsive layout, errors, and owner testing |
-| 6. Deployment and submission | Independent deployed app and source attribution | Independent deployed app and source attribution | Working URLs, final application review, submission readiness |
+| 1. PRD agreement | Planning, coupled resources, operations, debrief, saves/exports, and limits | Query, compatibility, viewer, annotations, saves/exports, and limits | Owner approves detailed requirements before code |
+| 2. Both foundations | Terrain/kernel outputs and one environment result; educational rule sheet and a bounded simulation output | Real metadata/cutouts, local spectral compatibility, common-grid comparison, runtime/data-size report | Owner accepts actual scientific/data basis and explicit teaching assumptions |
+| 3. First working workflows | Custom site/date → planner results → configured outpost run | Custom sky query → observations → linked/blink viewer | Both applications handle new user inputs |
+| 4. Core completion | Comparison/date search plus mission control, events, resource consequences, and debrief | Time/spectral exploration, quality panel, annotations, and evidence workspace | Complete application workflows |
+| 5. Persistence and usability | Plans/runs, resume/replay, share/import/export, and accessibility | Investigations, share/import/export, and accessibility | Owner testing and feedback |
+| 6. Independent deployments | Working Lunar Mission Lab URL and reproducible assets/setup | Working SPHEREx URL and reproducible retrieval/setup | Owner decides readiness and submission |
 
-Each app has its own checkpoint status. CLPS passing does not imply SPHEREx passed, or vice versa.
+Both foundations are reviewed before either interface expands. Pi executes one bounded batch at a time and returns concrete artifacts. Checkpoint 2 may use separate environment and training-engine handoffs; do not expand all scientific components in one uncontrolled batch.
 
-## Repository structure and shared infrastructure
+## Ownership and execution
 
-Proposed implementation layout:
-- `apps/clps/web/`, `apps/clps/api/`, `apps/clps/scripts/`
-- `apps/spherex/web/`, `apps/spherex/api/`, `apps/spherex/scripts/`
-- `data/manifests/clps/`, `data/manifests/spherex/`
-- `deploy/clps/`, `deploy/spherex/`
-- `docs/`: product plans and individual Pi handoffs.
+- Codex generates plans, code, and concise handoffs.
+- Pi installs dependencies, executes code, prepares data, builds, and deploys.
+- The owner reviews results, handles testing, and directs the next batch.
+- Codex launches no subagents and runs no application code/tests.
+- No extensive generated test suite.
+- Every code handoff names prerequisites, exact commands, artifact paths, expected outputs, and known limitations.
+- A failed batch returns a concrete failure and one bounded next action. Additional models, datasets, features, or infrastructure need owner direction.
+- Published artifacts are attributed to Pi execution; Codex does not claim independent runtime verification.
 
-Use React/TypeScript frontends and Python/FastAPI backends, with bounded persistent jobs where calculations/retrieval require them. Each application has separate storage, capabilities, scientific contracts, and deployment configuration. Share visual conventions and handoff format; introduce shared code only after an actual duplicate implementation justifies it.
+PRD delivery ends at owner review. It does not start implementation or authorize automatic progression through these checkpoints.
 
-Generated assets, source data, caches, credentials, and SPICE binaries are excluded from Git. Record sources/checksums and reproducible preparation instructions. No GPU, account system, distributed workers, or generic platform is a dependency for the first release.
+## Repository and implementation boundaries
 
-## Definition of done
+Keep all source/configuration/documentation in nasa-2026. Proposed product directories:
+- apps/clps/web, apps/clps/api, apps/clps/scripts — Lunar Mission Lab planner and trainer modules.
+- apps/spherex/web, apps/spherex/api, apps/spherex/scripts.
+- data/manifests/clps and data/manifests/spherex.
+- deploy/clps and deploy/spherex.
+- docs — PRDs, models/rules, and individual Pi handoffs.
 
-CLPS: a new supported site/date scenario can be calculated, interpreted, compared, used in a landing-window search, and saved/shared/exported through the deployed application.
+Two independent applications/deployments. React/TypeScript frontends and Python/FastAPI services remain the proposed architecture, with bounded jobs, persistent source/derived artifacts, and browser-local user saves. Share conventions before creating shared abstractions.
 
-SPHEREx: a new supported sky/date request retrieves actual observations; users can inspect which images are comparable, compare them in a common sky frame, review quality information, annotate evidence, and save/share/export the investigation. Automatic object discovery and classification are later extensions.
+Large source datasets, caches, generated rasters, credentials, and SPICE binaries stay outside Git. Version/checksum manifests and reproducible preparation steps belong in the repository. No GPU or account platform is required for the initial release.
 
-For both: unsupported inputs produce useful explanations; numerical/data limits remain visible; results identify source and model versions; deployment supports uncached requests. Owner testing determines readiness.
+## Competition association and timing
 
-## Competition scheduling and two-entry eligibility
+Proposed primary associations: Lunar Mission Lab under CLPS, with the Junior Astronaut trainer as a complementary challenge; SPHEREx under Planet X and SPHEREx.
 
-The two-product build decision is distinct from confirmation of two official entries. Current published event guidance says submitted solutions are developed during the November 14–15 event, while learning and data exploration can happen beforehand. Align execution with the applicable organizer rules; do not treat this plan as permission to begin submitted-solution development early.
+The 2026 participant terms permit solutions addressing one or more challenges for posting. That does not establish multiple registration/judging-track eligibility. The owner's two-entry participation arrangement remains unconfirmed.
 
-Two-entry eligibility for the owner's participation arrangement remains unconfirmed. The owner should obtain an organizer answer before committing both as official submissions. Do not infer eligibility from the ability to create two applications or repositories.
+Published 2026 event guidance says submitted solutions are developed during November 14–15; advance learning and data exploration are permitted. Align actual implementation with applicable organizer guidance. Full challenge statements/resources must be checked before claiming complete fulfillment of the complementary trainer challenge.
 
-Source: [published 2026 event guidance](https://www.spaceappschallenge.org/2026/local-events/santiago-dominican-republic/). Full challenge statements/resources must be checked when available and material changes returned to the owner.
+Sources: [2026 participant terms](https://www.spaceappschallenge.org/legal/), [published event guidance](https://www.spaceappschallenge.org/2026/local-events/santiago-dominican-republic/).
 
-## Document map
+## Next action
 
-- [CLPS features](CLPS-FEATURES.md)
-- [CLPS detailed implementation plan](CLPS-IMPLEMENTATION-PLAN.md)
-- [SPHEREx features](SPHEREX-FEATURES.md)
-- [SPHEREx detailed implementation plan](SPHEREX-IMPLEMENTATION-PLAN.md)
-
-Next action: owner review of the detailed plans. The first code handoff, once requested and appropriately scheduled, is one bounded foundation batch. No application code was generated or executed to create this plan.
+Owner reviews the two PRDs and supplies revisions or approval. Codex then reconciles detailed code batches and prepares only the next requested handoff. No application code was generated or executed in this documentation update.

@@ -1,5 +1,7 @@
 # CLPS Lunar Mission Planner — Feature List
 
+> **October 18, 2026 — earlier design reference.** The [current Lunar Mission Lab PRD](PRD-LUNAR-MISSION-LAB.md) supersedes conflicting scope in this document. The combined product now includes an operational outpost-training mode. Do not execute this earlier plan unchanged; reconcile code batches after owner PRD review.
+
 Status: product selected and core scope locked October 18, 2026; detailed implementation choices remain subject to owner review.
 Repository: https://github.com/rs25-labs/nasa-2026
 Companion: [Implementation plan](./CLPS-IMPLEMENTATION-PLAN.md)

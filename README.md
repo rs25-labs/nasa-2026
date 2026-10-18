@@ -1,19 +1,18 @@
 # NASA 2026
 
-Two complete web applications for NASA Space Apps challenges:
+Two complete web applications:
 
-1. **CLPS Lunar Mission Planner** — terrain-aware sunlight/Earth visibility, mission comparison, and landing-window search.
-2. **SPHEREx Sky Change Investigator** — observation retrieval, compatible image comparison, and saved evidence-based investigations.
+1. **Lunar Mission Lab** — combines CLPS mission planning with a connected educational lunar-outpost simulation.
+2. **SPHEREx Sky Change Investigator** — real observation retrieval, compatible image comparison, and saved evidence-based investigations.
 
-Product pair and overall scope locked by the owner on October 18, 2026. Implementation details await review.
+## Start with the PRDs
 
-Start with the [agreed two-application build plan](docs/TWO-ENTRY-BUILD-PLAN.md).
+- [Lunar Mission Lab PRD](docs/PRD-LUNAR-MISSION-LAB.md)
+- [SPHEREx Sky Change Investigator PRD](docs/PRD-SPHEREX-SKY-CHANGE-INVESTIGATOR.md)
+- [Two-application coordination and review plan](docs/TWO-ENTRY-BUILD-PLAN.md)
 
-| Application | Features | Implementation |
-|---|---|---|
-| CLPS | [Feature list](docs/CLPS-FEATURES.md) | [Detailed plan](docs/CLPS-IMPLEMENTATION-PLAN.md) |
-| SPHEREx | [Feature list](docs/SPHEREX-FEATURES.md) | [Detailed plan](docs/SPHEREX-IMPLEMENTATION-PLAN.md) |
+Product direction is selected; detailed PRDs await owner review before implementation. The PRDs take precedence over earlier feature lists and detailed implementation proposals.
 
-Codex generates plans/code. Pi executes. The owner reviews outputs, handles testing, and directs progression. No Codex subagents or application execution.
+Codex generates plans/code; Pi executes; the owner reviews outputs, handles testing, and directs progression. No Codex subagents or application execution.
 
-This repository currently contains planning documents. No application runtime is supplied yet. Two official competition entries remain subject to organizer eligibility/timing requirements described in the build plan.
+This repository contains planning documents. Official submission association, eligibility for two entries, and implementation timing follow applicable organizer rules.
