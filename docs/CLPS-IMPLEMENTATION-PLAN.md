@@ -1,8 +1,13 @@
-# CLPS Lunar Mission Browser — Implementation Plan
+# CLPS Lunar Mission Planner — Implementation Plan
 
-Status: proposed plan for owner review. Date: October 1, 2026.
+Status: revised October 18, 2026 for the locked two-application plan; detailed implementation remains proposed for owner review.
 Repository: https://github.com/rs25-labs/nasa-2026
 Scope: [Feature list F01–F12](./CLPS-FEATURES.md)
+Coordination: [agreed two-application plan](./TWO-ENTRY-BUILD-PLAN.md).
+
+**Execution agreement:** Codex generates plans/code and Pi handoffs. Pi runs preparation, application, build, and deployment commands. The owner reviews outputs, handles testing, and directs the next batch. Codex launches no subagents and executes no application code/tests.
+
+The seven CLPS batches below map to master checkpoints as follows: batches 1–2 → checkpoint 2; batches 3–4 → checkpoint 3; batch 5 → checkpoint 4; batch 6 → checkpoint 5; batch 7 → checkpoint 6. Both applications' foundations are reviewed before completing either interface.
 
 **Goal:** deliver a working web application for terrain-aware lunar sunlight/Earth visibility, mission comparison, and landing-date exploration.
 
@@ -34,31 +39,31 @@ All source, documentation, configuration, and preparation scripts belong in nasa
 |---|---|
 | docs/CLPS-FEATURES.md | Reviewed feature scope |
 | docs/CLPS-IMPLEMENTATION-PLAN.md | This implementation sequence |
-| docs/DATA-AND-MODEL.md | Selected terrain/kernels, coordinates, units, coverage, and numerical conventions |
-| docs/PI-HANDOFF.md | Exact batch commands and output checklist, added with code |
-| docs/DEPLOYMENT.md | Build, storage, environment, and release instructions |
-| apps/web/src/features/explore/ | Polar map and site selection |
-| apps/web/src/features/scenario/ | Inputs, sky plot, timeline, and summary |
-| apps/web/src/features/compare/ | Scenario comparison |
-| apps/web/src/features/date-search/ | Candidate-date workflow |
-| apps/web/src/features/saved/ | Browser saves, sharing, and import/export |
-| apps/web/src/lib/api.ts | Typed API client and structured errors |
-| apps/web/src/lib/contracts.ts | Web representations of the API schema |
-| services/api/app/main.py | API composition and static web serving |
-| services/api/app/routes/ | Capabilities, scenarios, jobs, results, and exports |
-| services/api/app/models/ | Versioned request/result/error contracts |
-| services/api/app/science/terrain.py | Elevation sampling and terrain transforms |
-| services/api/app/science/horizon.py | Horizon calculation and finite-disk obstruction |
-| services/api/app/science/ephemeris.py | Compatible kernels, time conversion, local Sun/Earth geometry |
-| services/api/app/science/visibility.py | Visibility states and transitions |
-| services/api/app/science/metrics.py | Mission metrics and constraint evaluation |
-| services/api/app/science/search.py | Bounded landing-date evaluation |
-| services/api/app/jobs/ | Single worker, persistence, cancellation, and progress |
-| services/api/app/storage/ | Scenario/result cache and model-version keys |
-| scripts/prepare_data.py | Reproducible data preparation |
-| scripts/describe_model.py | Manifest/coverage report for owner review |
-| data/manifests/ | Committed sources, checksums, projections, and model versions |
-| deploy/Dockerfile, compose.yaml | Single-host application packaging |
+| docs/CLPS-DATA-AND-MODEL.md | Selected terrain/kernels, coordinates, units, coverage, and numerical conventions |
+| docs/CLPS-PI-HANDOFF.md | Exact batch commands and output checklist, added with code |
+| docs/CLPS-DEPLOYMENT.md | Build, storage, environment, and release instructions |
+| apps/clps/web/src/features/explore/ | Polar map and site selection |
+| apps/clps/web/src/features/scenario/ | Inputs, sky plot, timeline, and summary |
+| apps/clps/web/src/features/compare/ | Scenario comparison |
+| apps/clps/web/src/features/date-search/ | Candidate-date workflow |
+| apps/clps/web/src/features/saved/ | Browser saves, sharing, and import/export |
+| apps/clps/web/src/lib/api.ts | Typed API client and structured errors |
+| apps/clps/web/src/lib/contracts.ts | Web representations of the API schema |
+| apps/clps/api/app/main.py | API composition and static web serving |
+| apps/clps/api/app/routes/ | Capabilities, scenarios, jobs, results, and exports |
+| apps/clps/api/app/models/ | Versioned request/result/error contracts |
+| apps/clps/api/app/science/terrain.py | Elevation sampling and terrain transforms |
+| apps/clps/api/app/science/horizon.py | Horizon calculation and finite-disk obstruction |
+| apps/clps/api/app/science/ephemeris.py | Compatible kernels, time conversion, local Sun/Earth geometry |
+| apps/clps/api/app/science/visibility.py | Visibility states and transitions |
+| apps/clps/api/app/science/metrics.py | Mission metrics and constraint evaluation |
+| apps/clps/api/app/science/search.py | Bounded landing-date evaluation |
+| apps/clps/api/app/jobs/ | Single worker, persistence, cancellation, and progress |
+| apps/clps/api/app/storage/ | Scenario/result cache and model-version keys |
+| apps/clps/scripts/prepare_data.py | Reproducible data preparation |
+| apps/clps/scripts/describe_model.py | Manifest/coverage report for owner review |
+| data/manifests/clps/ | Committed sources, checksums, projections, and model versions |
+| deploy/clps/Dockerfile, deploy/clps/compose.yaml | Single-host application packaging |
 
 File boundaries may be consolidated where appropriate, but preserve the separation between geometry, metrics, API, and UI.
 
@@ -126,7 +131,7 @@ Features: foundation for F01/F03/F11.
 - [ ] Add repository README, ignore rules, dependency manifests, and preparation scripts.
 - [ ] Select documented terrain and a compatible SPICE kernel set.
 - [ ] Prepare elevation/context/map assets and coverage metadata.
-- [ ] Write DATA-AND-MODEL.md with actual asset IDs, units, projections, frames, and supported dates.
+- [ ] Write CLPS-DATA-AND-MODEL.md with actual asset IDs, units, projections, frames, and supported dates.
 - [ ] Return a manifest, data-size summary, coverage image, and sampled elevations for three example locations.
 - [ ] Owner reviews data usability and coordinate/model conventions.
 
@@ -203,7 +208,7 @@ Hosting-provider selection is deferred to this batch; it does not block the feat
 
 ## 6. How batches are handed off
 
-Codex supplies changes and a concise PI-HANDOFF.md section: prerequisites, exact commands, expected artifact paths, and the outputs to return. Pi runs them. The owner provides feedback or approval. Execution results supplied by Pi are reported as Pi outputs, not claimed as independently verified by Codex.
+Codex supplies changes and a concise CLPS-PI-HANDOFF.md section: prerequisites, exact commands, expected artifact paths, and the outputs to return. Pi runs them. The owner provides feedback or approval. Execution results supplied by Pi are reported as Pi outputs, not claimed as independently verified by Codex.
 
 Do not add extensive generated tests or dispatch subagents. The owner determines and handles testing. Include only artifacts essential to assessing data correctness, scientific results, functional completion, and deployment.
 
@@ -221,5 +226,5 @@ Primary references: [CLPS challenge](https://www.spaceappschallenge.org/2026/cha
 
 This is an implementation proposal. Actual selected DEM files, compatible kernel set, horizon numerical tolerance, processing performance, and hardware sizing are established through batches 1–2, then recorded as concrete outputs before application expansion. Existing documentation supports the approach; no calculation or runtime installation has been executed for this plan.
 
-The full challenge statement/resources, when published, must be reconciled with scope before competition submission. Owner review of these two documents is the next step; code generation follows their instructions.
+The full challenge statement/resources, when published, must be reconciled with scope before competition submission. Scheduling and two-entry eligibility follow the master plan. The owner has locked the product selection and overall scope; detailed-plan review and their next instruction precede code generation.
 

@@ -1,8 +1,9 @@
-# CLPS Lunar Mission Browser — Feature List
+# CLPS Lunar Mission Planner — Feature List
 
-Status: proposed scope for owner review. Date: October 1, 2026.
+Status: product selected and core scope locked October 18, 2026; detailed implementation choices remain subject to owner review.
 Repository: https://github.com/rs25-labs/nasa-2026
 Companion: [Implementation plan](./CLPS-IMPLEMENTATION-PLAN.md)
+Coordination and execution agreement: [two-application plan](./TWO-ENTRY-BUILD-PLAN.md)
 
 ## Product goal
 
@@ -86,7 +87,7 @@ The basic mission constraints in F02/F06 remain part of version 1. The later ele
 
 ## Review decisions
 
-Proposed defaults: an accessible 2D polar map and sky plot; full F01–F12 release; browser-local saves with shareable input URLs; no login dependency; explicit constrained south-polar domain. The owner reviews these before code generation. Exact terrain assets and computational resolution are confirmed by Pi's first implementation batch and reviewed before the rest of the application is built.
+Proposed defaults: an accessible 2D polar map and sky plot; full F01–F12 release; browser-local saves with shareable input URLs; no login dependency; explicit constrained south-polar domain. The owner has locked this product scope; numerical defaults and implementation details are reviewed before code generation. Exact terrain assets and computational resolution are confirmed by Pi's first implementation batch and reviewed before the rest of the application is built.
 
 ## Source basis
 
