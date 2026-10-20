@@ -23,8 +23,10 @@ Generate wider-terrain acquisition, curvature-aware horizon computation, finite-
 Current owner-authorized execution checkpoint (2026-10-20): optional
 [composite raster clearance](LML-COMPOSITE-MODEL.md) and prior polar
 obstruction proofs now produce model-conditional FULL/BLOCKED results.
-Sample-a: Sun 29 BLOCKED; Earth 7 FULL / 22 UNKNOWN. Bounded disk-area
-integration/PARTIAL remain pending, so Batch 02/L03 is incomplete. The
+Follow-on [finite-disk milestone](LML-VISIBILITY-MILESTONE.md) adds bounded
+area integration and a real PARTIAL result. Original sample-a now has Sun
+29 BLOCKED; Earth 9 FULL / 20 UNKNOWN. Precision/performance acceptance
+remains pending, so Batch 02/L03 release readiness is incomplete. The
 owner's continuation instructions authorize bounded Codex execution and
 PR/merge delivery, superseding the older execution assignment above for
 these checkpoints. No API/UI, training or SPHEREx work is included.

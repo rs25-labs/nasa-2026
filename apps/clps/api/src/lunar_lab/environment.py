@@ -8,7 +8,8 @@ Correction pass (Codex audit):
   every potentially intersected sector. Missing witnesses propagate to
   UNKNOWN; a complete horizon is not required to prove obstruction.
   Optional composite clearance proves FULL over the explicit raster model.
-  PARTIAL remains unavailable without projected-area integration.
+  Bounded projected-area integration can prove PARTIAL and narrower
+  fraction intervals while preserving unknown area.
 - Intervals use an explicit left-held sample-state interpretation over
   [t_i, t_{i+1}); the terminal boundary sample carries zero elapsed time
   and starts no zero-length interval.
@@ -96,7 +97,7 @@ def _unknown_row(row: dict, horizon, reason: str, half_width: float, footprint_c
     }
 
 
-def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bounds: list[dict] | None = None, clearance=None) -> list[dict]:
+def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bounds: list[dict] | None = None, clearance=None, cell_evidence=None) -> list[dict]:
     """Join each geometric row with its disk footprint's horizon state.
 
     Legacy profile values remain diagnostic only. The separate sector
@@ -105,6 +106,10 @@ def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bou
     """
     out = []
     sectors = prepare_sectors(sector_bounds or [])
+    area_prepared = None
+    if clearance is not None and cell_evidence is not None:
+        from .disk_area import TerrainTileProver,integrate_disk,INTEGRATOR_ID
+        area_prepared = TerrainTileProver(cell_evidence,clearance)
     for row in geometry_rows:
         horizon = horizon_at_azimuth(profiles, row["azimuth_deg"])
         half_width = footprint_half_width_deg(row["center_elevation_deg"], row["angular_radius_deg"])
@@ -116,12 +121,15 @@ def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bou
                 visibility_model_id=COMPOSITE_MODEL_ID,
                 clearance_proof_id='', clearance_termination='not-required-blocked',
                 clearance_visited_nodes=0,
+                disk_area_proof_id='',fraction_integrator_id='',fraction_width_upper=0.0 if result['state']=='BLOCKED' else 1.0,
+                disk_area_termination='whole-disk-shortcut',
                 visibility_basis='bounds conditional on reported geometric directions and composite raster solids; physical height error unbounded',
             )
             if result['state'] != 'BLOCKED':
                 proof = clearance.prove(row)
                 proof_id = f"clearance-{len(clearance.proofs)}"
                 proof.update(proof_id=proof_id, utc=row['utc'], body=row['body'],
+                             proof_kind='whole-disk',
                              azimuth_deg=row['azimuth_deg'], center_elevation_deg=row['center_elevation_deg'],
                              angular_radius_deg=row['angular_radius_deg'])
                 clearance.proofs.append(proof)
@@ -132,6 +140,23 @@ def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bou
                                   visible_fraction=1.0, visible_fraction_lower=1.0, visible_fraction_upper=1.0)
                 else:
                     result['state_reason'] += '; composite-clearance:'+proof['termination']
+            if area_prepared is not None:
+                result['fraction_integrator_id'] = INTEGRATOR_ID
+                if result['state']=='FULL':
+                    result['fraction_width_upper'] = 0.0
+                elif result['state']=='UNKNOWN':
+                    prover = TerrainTileProver([],clearance,prepared=area_prepared)
+                    area = integrate_disk(row,prover)
+                    area_id = f'disk-area-{len(clearance.area_proofs)}'
+                    area.update(proof_id=area_id,utc=row['utc'],body=row['body'],
+                                azimuth_deg=row['azimuth_deg'],center_elevation_deg=row['center_elevation_deg'],
+                                angular_radius_deg=row['angular_radius_deg'],terrain_node_budget=prover.initial_budget,
+                                terrain_nodes_used=prover.initial_budget-prover.remaining)
+                    clearance.area_proofs.append(area)
+                    for key in ('state','visible_fraction','visible_fraction_lower','visible_fraction_upper','fraction_width_upper'):
+                        result[key] = area[key]
+                    result.update(disk_area_proof_id=area_id,disk_area_termination=area['termination'],
+                                  state_reason='projected-disk-area-bounds:'+area['termination']+'; raster-model conditional')
         joined = _unknown_row(row, horizon, result['state_reason'], half_width, 0)
         joined.update(result)
         out.append(joined)
@@ -208,7 +233,8 @@ def summarize(timeseries: list[dict], intervals: list[dict], site_id: str, body:
     """Duration-weighted summary for one site/body.
 
     Fractions and the visible-fraction mean weight by left-held elapsed
-    hours, not sample counts. The mean covers known time only. The longest
+    hours, not sample counts. The scalar mean covers exact-fraction time
+    only; PARTIAL can have a known state and an interval fraction. The longest
     known blocked interval is a lower bound when unknown time remains;
     all-UNKNOWN leaves the mission-wide maximum unresolved (never zero).
     Six-hour sampling gives coarse sampled estimates, not precise event
@@ -228,8 +254,11 @@ def summarize(timeseries: list[dict], intervals: list[dict], site_id: str, body:
     weighted_lower = Interval(0)
     weighted_upper = Interval(0)
     known_hours = 0.0
+    exact_fraction_hours = 0.0
     for row, hours in zip(series, durations):
         hours_by_state[row["state"]] += hours
+        if row['state']!='UNKNOWN':
+            known_hours += hours
         scalar = row["visible_fraction"]
         lower = float(row.get("visible_fraction_lower", scalar if scalar != "" else 0))
         upper = float(row.get("visible_fraction_upper", scalar if scalar != "" else 1))
@@ -239,7 +268,7 @@ def summarize(timeseries: list[dict], intervals: list[dict], site_id: str, body:
         weighted_upper = weighted_upper + Interval(upper)*Interval(hours)
         if row["visible_fraction"] != "":
             weighted_frac += float(row["visible_fraction"]) * hours
-            known_hours += hours
+            exact_fraction_hours += hours
     body_intervals = [i for i in intervals if i["site_id"] == site_id and i["body"] == body]
     duration = sum((Interval(h) for h in durations), Interval(0))
     if total_hours > 0:
@@ -255,12 +284,12 @@ def summarize(timeseries: list[dict], intervals: list[dict], site_id: str, body:
     else:
         blocked_fraction = 0.0
         unknown_fraction = 0.0 if total == 0 else 1.0
-    if known_hours > 0:
-        mean_fraction = round(weighted_frac / known_hours, 6)
-        mean_basis = "duration-weighted over known hours only"
+    if exact_fraction_hours > 0:
+        mean_fraction = round(weighted_frac / exact_fraction_hours, 6)
+        mean_basis = "duration-weighted over exact-fraction hours only"
     else:
         mean_fraction = ""
-        mean_basis = "no known hours"
+        mean_basis = "no exact-fraction hours"
     if blocked_hours:
         longest_blocked = round(max(blocked_hours), 4)
         longest_basis = "lower bound; unknown time remains" if unknown_hours > 0 else "known maximum"
@@ -277,6 +306,9 @@ def summarize(timeseries: list[dict], intervals: list[dict], site_id: str, body:
         "unknown_samples": counts["UNKNOWN"],
         "total_hours": round(total_hours, 4),
         "known_hours": round(known_hours, 4),
+        'exact_fraction_hours': round(exact_fraction_hours,4),
+        'partial_hours': round(hours_by_state['PARTIAL'],4),
+        'full_hours': round(hours_by_state['FULL'],4),
         "unknown_hours": round(unknown_hours, 4),
         "blocked_hours": round(hours_by_state["BLOCKED"], 4),
         "blocked_fraction": blocked_fraction,

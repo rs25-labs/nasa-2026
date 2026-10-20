@@ -58,6 +58,9 @@ class CompositeClearance:
         self.cap_radius = 2*Interval(terrain.radius)*sine/cosine
         self.cache_budget, self.cache = cache_budget, {}
         self.proofs = []
+        self.area_proofs = []
+        self.band_envelope = None
+        self.band_sine_upper = None
         self.began = time.perf_counter()
         # Include any slivers of the nominal cap outside the raster rectangle
         # as unknown cells. Verify the padded rectangle covers the cap.
@@ -147,7 +150,83 @@ class CompositeClearance:
             maximum = Interval(1).hi
         cosine = sin_cos_degrees(threshold)[1]
         margin = Interval(g.max_radius_m)*Interval(maximum)-self.observer*cosine
-        return margin.hi < 0,'exterior-radius-envelope',str(margin.hi)
+        if margin.hi < 0:
+            return True,'exterior-radius-envelope',str(margin.hi)
+        self._prepare_bands()
+        if self.band_sine_upper is not None and sin_cos_degrees(threshold)[0].lo > self.band_sine_upper:
+            return True,'latitude-band-envelope',str(margin.hi)
+        return False,'exterior-radius-envelope',str(margin.hi)
+
+    def _prepare_bands(self):
+        """Float proposals are accepted only after a strict interval proof."""
+        if self.band_envelope is not None:
+            return
+        self.band_envelope = []
+        if not hasattr(self.global_terrain,'exterior_bands'):
+            return
+        import math
+        bands = self.global_terrain.exterior_bands(self.terrain.max_lat)
+        if not bands:
+            return
+        maxima = []
+        for band in bands:
+            delta = max(Interval(0).lo,(Interval(band['latitude_south'])-self.site['latitude_deg']).lo)
+            radius,ro = band['max_radius_m'],self.site['observer_radius_m']
+            # Candidate extrema of apparent elevation for delta in [delta0,pi].
+            ds = [math.radians(float(delta)),math.pi]
+            if radius < ro:
+                stationary = math.acos(radius/ro)
+                if ds[0] <= stationary:
+                    ds.append(stationary)
+            proposal = max(math.degrees(math.atan2(radius*math.cos(d)-ro,radius*math.sin(d))) for d in ds)
+            tick = min(9000,max(-8999,math.ceil(proposal*100)+1))
+            theta = Interval(str(tick/100))
+            if tick == 9000:
+                return
+            c0 = sin_cos_degrees(Interval(delta)+theta)[1]
+            c1 = sin_cos_degrees(Interval(180)+theta)[1]
+            maximum = max(c0.hi,c1.hi)
+            if (Interval(delta)+theta).lo <= 0:
+                maximum = Interval(1).hi
+            margin = Interval(radius)*Interval(maximum)-self.observer*sin_cos_degrees(theta)[1]
+            if margin.hi >= 0:
+                return
+            evidence = dict(band,minimum_separation_lo_deg=str(delta),
+                            elevation_upper_deg=str(theta.lo),margin_upper_m=str(margin.hi))
+            self.band_envelope.append(evidence)
+            maxima.append(sin_cos_degrees(theta)[0].hi)
+        self.band_sine_upper = max(maxima)
+
+    def prove_region(self, direction, *, node_budget=512):
+        """Enclose clearance of unit directions in a local E/N/up box."""
+        from .bounded_math import dot
+        if not isinstance(node_budget,int) or node_budget<0:
+            raise ValueError('Invalid region node budget')
+        east,north,up = direction
+        sine = Interval(max(Interval(-1).lo,up.lo))
+        result = dict(clear=False,model_id=MODEL_ID,node_budget=node_budget,visited_nodes=0,
+                      cache_budget=self.cache_budget,termination='',terminal_nodes=[],unresolved_node='',
+                      minimum_disk_up_lo=str(sine.lo),region_direction=[[str(d.lo),str(d.hi)] for d in direction])
+        if sine.lo <= -1:
+            result['termination'] = 'region-includes-nadir'
+            return result
+        self._prepare_bands()
+        if self.band_sine_upper is None or sine.lo <= self.band_sine_upper:
+            result['termination'] = 'exterior-band-envelope-unresolved'
+            return result
+        cosine = (1-sine.square()).nonnegative().sqrt()
+        import math
+        az = math.degrees(math.atan2(east.midpoint_float(),north.midpoint_float())) % 360
+        normals = []
+        for half in (1,2,4,8,16,32,64,89):
+            ss,sc = sin_cos_degrees((az-half)%360)
+            es,ec = sin_cos_degrees((az+half)%360)
+            sa,ca = sin_cos_degrees(az)
+            local = ((sc,-ss,Interval(0)),(-ec,es,Interval(0)),(sa,ca,Interval(0)))
+            if all(dot(n,direction).lo > 0 for n in local):
+                normals = [tuple(a*e+b*n for e,n in zip(self.east,self.north)) for a,b,_ in local]
+                break
+        return self._walk(result,normals,sine,cosine,node_budget)
 
     def prove(self, row, *, node_budget=NODE_BUDGET):
         from math import isfinite
@@ -171,6 +250,8 @@ class CompositeClearance:
         threshold = Interval(threshold.lo)
         exterior_ok,reason,margin = self._exterior(threshold)
         result['exterior_margin_upper_m'] = margin
+        result['exterior_method'] = reason
+        result['exterior_margin_basis'] = 'scalar envelope; latitude-band evidence recorded separately when used'
         result['exterior_proved_below'] = exterior_ok
         if not exterior_ok:
             result['termination'] = reason+'-unresolved'
@@ -178,6 +259,9 @@ class CompositeClearance:
         normals,half_width = self._wedge(row)
         result['verified_wedge_half_width_deg'] = half_width
         sine,cosine = sin_cos_degrees(threshold)
+        return self._walk(result,normals,sine,cosine,node_budget)
+
+    def _walk(self,result,normals,sine,cosine,node_budget):
         stack = [self.root]
         while stack:
             if result['visited_nodes'] >= node_budget:
@@ -231,4 +315,6 @@ class CompositeClearance:
                     cache_budget=self.cache_budget, cached_nodes=len(self.cache),
                     root_node=':'.join(map(str,self.root)), wall_seconds=time.perf_counter()-self.began,
                     arithmetic='50-digit outward Decimal intervals; strict trigonometric comparisons',
+                    exterior_latitude_bands=self.band_envelope,
+                    exterior_upper_sine=str(self.band_sine_upper) if self.band_sine_upper is not None else None,
                     global_terrain=self.global_terrain.metadata())

@@ -1,13 +1,48 @@
 # Lunar Mission Lab — Pi Handoff 02
 
-Status: corrections, cell/sector enclosures, and **model-conditional whole-disk BLOCKED/FULL classification implemented and executed by Codex on 2026-10-20**, explicitly authorized by the owner. Push and merge to remote main are authorized. L03 remains incomplete: PARTIAL and bounded disk-area integration remain pending. Physical height error remains unbounded. Prior Pi reference runs below are historical evidence, not current validation.
+Status: **finite-disk visibility engine milestone implemented and executed by Codex on 2026-10-20**, explicitly authorized by the owner. BLOCKED/FULL/PARTIAL/UNKNOWN and bounded projected fractions are supported. Push and merge to remote main are authorized. Stop for the requested milestone review after delivery. L03 release acceptance remains incomplete: measured transition precision and runtime need improvement. Physical height error remains unbounded. Prior runs below are historical evidence, not current validation.
 Batch: horizon and operating environment (one site, diagnostic only).
 Scope authority: [Lunar Mission Lab PRD](PRD-LUNAR-MISSION-LAB.md).
 Active sequence: [Implementation Plan](LML-IMPLEMENTATION-PLAN.md) Batch 02.
 Code branch: feat/lunar-environment (branched from feat/lunar-foundation).
 Prior batch: [Pi Handoff 01](LML-PI-HANDOFF-01.md) — foundation must be reviewed before relying on these environments.
 
-## Composite clearance checkpoint — 2026-10-20
+## Finite-disk milestone — 2026-10-20
+
+Current method, evidence and stocktake: [Visibility Milestone](LML-VISIBILITY-MILESTONE.md).
+Branch `codex/lunar-disk-area`; [bounded plan](LML-DISK-AREA-PLAN.md).
+
+- Seven-day reference: `data/local/lml/env-runs/20261020T195253Z-ac8ce2b8/`.
+  Exit 0; 71.02 seconds; 396.63 MiB peak; fourteen artifacts. Sun 29 BLOCKED;
+  Earth 9 FULL / 20 UNKNOWN, with 48 known FULL and 120 UNKNOWN left-held hours.
+- One-day transition reference: `data/local/lml/env-runs/20261020T195032Z-7764e707/`.
+  Exit 0; 60.88 seconds; 334.20 MiB peak; fourteen artifacts. Sun 1 PARTIAL /
+  4 UNKNOWN; Earth 2 FULL / 3 UNKNOWN. At 2026-11-24T03:00:00Z Sun fraction
+  bounds are [0.1507037223588662,0.5962696431082882], with an empty scalar.
+- All nine assets reused offline; no new sources or dependencies. Clear
+  exterior bounds now use validated latitude bands. Area integrator ID:
+  `lml-projected-disk-bounds-v1`; composite terrain model ID is unchanged.
+- New artifact: `projected-disk-area-proofs.json`, with shared proof receipts,
+  terminal square areas and exact coverage. Existing composite proof/node
+  evidence remains linked. JSON serialization is streamed to bound memory.
+- Verifiers passed: 139 clearance replays / 20 disk partitions for seven days;
+  71 / 8 for the transition, source hashes, blocked-area inequalities,
+  fraction bounds, durations, proof links and released locks. Analytic half-disk
+  checks achieve width <0.01 within default limits; real transition bounds
+  remain much wider at the work caps. No extensive suite or subagents.
+- State-known hours include PARTIAL; scalar-mean denominators use separate
+  `exact_fraction_hours`. Plots display lower/upper fraction bands. Six-hour
+  intervals still do not certify state between timestamps.
+- **Stocktake/next action:** improve measured transition precision and reuse
+  work before planner UI expansion. Stop at this milestone for owner review;
+  do not launch further research, API/UI, training or SPHEREx automatically.
+
+The composite command below is unchanged. For the transition use
+`--start 2026-11-23T21:00:00Z --days 1` with the other settings retained.
+Use `apps/clps/scripts/verify_disk_area_artifacts.py` on a completed run for
+the exported-evidence checks; see the milestone document for exact commands.
+
+## Composite clearance checkpoint — 2026-10-20 (prior whole-disk algorithm)
 
 Implementation and proof contract: [Composite Model](LML-COMPOSITE-MODEL.md),
 [implementation plan](LML-COMPOSITE-IMPLEMENTATION-PLAN.md). Branch:
