@@ -1,0 +1,16 @@
+# Local execution and downloaded/generated artifacts
+.venv/
+**/.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+/data/local/
+/artifacts/
+.DS_Store

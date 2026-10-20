@@ -1,6 +1,6 @@
 # Product Requirements: Lunar Mission Lab
 
-Version 1.0 draft | October 18, 2026 | Owner review required
+Version 1.0 | October 18, 2026 | Owner authorized starting implementation; review checkpoints apply
 Repository: https://github.com/rs25-labs/nasa-2026
 
 ## 1. Product decision
@@ -12,7 +12,7 @@ Complementary challenge: [Build a Junior Astronaut Mission Trainer](https://www.
 
 Core promise: **Choose where and when to land, then experience how that choice affects operating an outpost.**
 
-This PRD is the authoritative proposed product scope. It supersedes conflicting scope in the older CLPS feature list and implementation plan. Approval of this PRD precedes revision of detailed code batches. The application must process new supported user inputs, not only replay prepared scenarios.
+This PRD is the authoritative proposed product scope. It supersedes conflicting scope in the older CLPS feature list and implementation plan. The owner has authorized starting implementation. The [active implementation plan](LML-IMPLEMENTATION-PLAN.md) and [Pi Handoff 01](LML-PI-HANDOFF-01.md) govern the current bounded batch. The application must process new supported user inputs, not only replay prepared scenarios.
 
 ## 2. Users, problem, and differentiation
 
@@ -141,6 +141,6 @@ CLPS requirements are addressed by L01–L06. The Junior Astronaut requirements 
 
 Build one integrated application, with CLPS proposed as the primary submission association. Combining topics does not establish permission for multiple formal registrations or judging tracks. Eligibility and event implementation timing follow the [coordination plan](TWO-ENTRY-BUILD-PLAN.md).
 
-Before code generation, owner reviews this PRD. Exact assets, numerical tolerances, educational rule constants, supported workload, and hosting size are settled through the bounded foundation/model checkpoints, not guessed performance claims.
+The owner authorized the first code handoff; later batches follow review of Pi outputs. Exact assets, numerical tolerances, educational rule constants, supported workload, and hosting size are settled through the bounded foundation/model checkpoints, not guessed performance claims.
 
 Sources: [LOLA archive](https://pds-geosciences.wustl.edu/missions/lro/lola.htm), [NASA polar illumination](https://pgda.gsfc.nasa.gov/products/69), [NAIF SPICE](https://naif.jpl.nasa.gov/naif/toolkit.html), and the two linked challenge summaries. No application or simulation code was executed in preparing this PRD.
