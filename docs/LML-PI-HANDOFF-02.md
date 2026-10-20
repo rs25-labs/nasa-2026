@@ -9,6 +9,15 @@ Prior batch: [Pi Handoff 01](LML-PI-HANDOFF-01.md) — foundation must be review
 
 ## Whole-disk obstruction checkpoint — 2026-10-20
 
+Subsequent bounded source check: [Wider Terrain Assessment](LML-WIDER-TERRAIN-ASSESSMENT.md).
+Compatible global LDEM_16 metadata and size were verified, but no hard physical
+terrain envelope was established. No asset/model integration was made. One
+unchanged-source offline run `20261020T191853Z-bf0f2958` reproduced the
+obstruction result (25.52 seconds; seven cached assets; Sun 29 BLOCKED,
+Earth 29 UNKNOWN). The next action is the explicit composite-raster contract
+in that assessment. L03 remains incomplete; do not rerun or broaden research
+automatically.
+
 Implementation: [disk plan](LML-DISK-IMPLEMENTATION-PLAN.md), obstruction-classification portion of [bounds design](LML-HORIZON-BOUNDS-DESIGN.md). No new sources/dependencies, API/UI, area integrator, subagents, or generated test suite.
 
 - Reference run: `data/local/lml/env-runs/20261020T190747Z-d1d0ed49/`; exit 0, eleven nonempty artifacts, 25.62 seconds elapsed, peak process memory 230.59 MiB. Same sample-a request and seven cached assets, offline.
