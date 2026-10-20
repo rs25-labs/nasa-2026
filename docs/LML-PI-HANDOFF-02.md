@@ -1,11 +1,26 @@
 # Lunar Mission Lab — Pi Handoff 02
 
-Status: corrections and **cell/sector enclosure step implemented and executed by Codex on 2026-10-20**, explicitly authorized by the owner. Pipeline execution succeeded; L03 scientific acceptance remains blocked by unresolved upper bounds and pending whole-disk classification. Prior Pi reference run below is historical evidence from uncorrected code.
+Status: corrections, cell/sector enclosures, and **whole-disk obstruction classification implemented and executed by Codex on 2026-10-20**, explicitly authorized by the owner. Push and merge to remote main are authorized. L03 remains incomplete: supported upper terrain bounds and useful partial/clear-sky results are pending. Prior Pi reference runs below are historical evidence, not current validation.
 Batch: horizon and operating environment (one site, diagnostic only).
 Scope authority: [Lunar Mission Lab PRD](PRD-LUNAR-MISSION-LAB.md).
 Active sequence: [Implementation Plan](LML-IMPLEMENTATION-PLAN.md) Batch 02.
 Code branch: feat/lunar-environment (branched from feat/lunar-foundation).
 Prior batch: [Pi Handoff 01](LML-PI-HANDOFF-01.md) — foundation must be reviewed before relying on these environments.
+
+## Whole-disk obstruction checkpoint — 2026-10-20
+
+Implementation: [disk plan](LML-DISK-IMPLEMENTATION-PLAN.md), obstruction-classification portion of [bounds design](LML-HORIZON-BOUNDS-DESIGN.md). No new sources/dependencies, API/UI, area integrator, subagents, or generated test suite.
+
+- Reference run: `data/local/lml/env-runs/20261020T190747Z-d1d0ed49/`; exit 0, eleven nonempty artifacts, 25.62 seconds elapsed, peak process memory 230.59 MiB. Same sample-a request and seven cached assets, offline.
+- Sun: 29 BLOCKED samples, scalar and per-sample fraction bounds 0/[0,0]. Earth: 29 UNKNOWN samples, empty scalar and bounds [0,1]. No FULL/PARTIAL results. Both bodies retain one 168-hour interval under the documented left-held interpretation. This does not establish continuous blockage or visibility between epochs.
+- BLOCKED now requires a supported cell witness over every possibly intersected sector, with each lower bound strictly above the entire disk's maximum elevation. A whole-disk obstruction can be established even though all diagnostic horizons remain INDETERMINATE and no complete upper bound exists.
+- Deciding footprints use outward interval half-space exclusions, including the forward midpoint hemisphere. Tangent sectors and the 0/360 seam are included. Missing sectors become explicit unknown gaps; missing/model-mismatched witnesses prevent a BLOCKED claim. Malformed/overlapping sector partitions and nonfinite geometry are rejected.
+- Each time-series row records fraction bounds, possible sector IDs, witnessed sector count, witness cell IDs, model ID and reason. `footprint_half_width_deg` is retained only as a diagnostic; it does not decide classification.
+- Summaries include duration-weighted mean-fraction lower/upper bounds over all left-held hours; unknowns stay [0,1]. The existing scalar mean remains explicitly known-hours-only. Outward floating conversion can leave the smallest positive float as the upper mean bound when the exact mean is zero.
+- Focused inline checks passed: wrap, tangency, missing sectors inside/outside the disk, model mismatch, strict equality threshold, zenith/nadir footprints, malformed inputs, fraction/duration accounting, and fine-sector rejection of opposite bearings. Final-source replay reproduced all 58 states and sector IDs. Independent sampling of 64 boundary directions per disk confirmed inclusion and blocked-sample consistency as a sanity check; the analytic interval construction supplies the enclosure argument.
+- Artifact checks confirmed witness IDs resolve to cell evidence, all eleven files are nonempty, there are no unsupported FULL/PARTIAL labels, both summaries account for 168 hours, and locks are released.
+- Initial run `20261020T190604Z-078db67a/` was conservative but unnecessarily included opposite-bearing sectors. It is superseded with a note in the ignored output directory; use the reference run above.
+- **Next action:** specify the bounded wider-terrain/global upper-envelope source and its uncertainty contract to enable useful clear-sky and partial-disk results. Do not treat current obstruction-only results as completion of Batch 02/L03 or begin API/UI from a claimed complete visibility model.
 
 ## Cell/sector enclosure checkpoint — 2026-10-20
 
@@ -20,7 +35,7 @@ Implementation: [bounded plan](LML-BOUNDS-IMPLEMENTATION-PLAN.md), step 1 of [bo
 - Focused checks passed for cardinal trigonometric enclosures, polar sectors, 0/360 wrap, wide/opposite-sector rejection, elevation sign, cap containment, and independent PyProj axis conventions. PyProj comparison used 1e-12 unit-vector tolerance as a sanity check, not as the interval proof. Deciding bounds use 50-digit outward Decimal operations and Taylor remainder bounds; analytic construction is recorded in the plan/code.
 - An initial run `20261020T185353Z-e51d521b` exposed a projected-axis swap during review. It is superseded, with a `SUPERSEDED.txt` note in that ignored output directory. The corrected run above is the reference; do not use the earlier cell/sector geometry.
 - Artifact checks confirmed all witness IDs resolve, sectors cover 0–360 without gaps, both body summaries cover 168 hours, and both locks were released. Visibility stays UNKNOWN by design in this step because sector-to-disk classification is not yet wired.
-- **Next action:** implement whole-disk obstruction classification from these sector lower bounds, including all intersected sectors and explicit gap propagation. No FULL claim without a supported terrain upper envelope. Batch 02/L03 is not complete.
+- This enclosure checkpoint has since been connected to whole-disk obstruction classification; see the newer checkpoint above. No FULL claim without a supported terrain upper envelope. Batch 02/L03 is not complete.
 
 ## Corrected execution checkpoint — 2026-10-20
 
@@ -33,7 +48,7 @@ Implementation: [bounded plan](LML-BOUNDS-IMPLEMENTATION-PLAN.md), step 1 of [bo
 - Radial diagnostic differences: max 0.059436 degrees, mean 0.007670 degrees (90 common bearings). Angular diagnostic differences: max 0.613648 degrees, mean 0.177119 degrees (90 intermediate bearings, holding the fine radial grid fixed). Neither establishes an accuracy bound or validates the grid.
 - Additional corrections: a capped grid reports its actual extent and `radial-sampling-cap`; cell-scale point spacing is reported separately from unresolved crossed-cell coverage; unusable maxima are excluded from refinement comparisons; nonfinite disk elevations are rejected; summary cadence text follows the requested cadence.
 - Verification was bounded to this execution and inspection of its artifacts. No generated test suite or concurrency/stale-lock stress test was performed. Matplotlib used a temporary font cache after reporting that user cache locations were unwritable; both PNG files were generated.
-- **Method checkpoint:** see [Horizon Bounds Design](LML-HORIZON-BOUNDS-DESIGN.md). Its cell/sector enclosure step has now been implemented (checkpoint above); whole-disk classification and useful upper bounds remain pending. Do not promote the existing diagnostic to a usable visibility planner or claim Batch 02/L03 complete.
+- **Method checkpoint:** see [Horizon Bounds Design](LML-HORIZON-BOUNDS-DESIGN.md). Cell/sector enclosures and whole-disk obstruction classification are now implemented (checkpoints above). Useful upper bounds, FULL/PARTIAL results and disk-area integration remain pending. Do not claim Batch 02/L03 complete.
 
 ## Assignment for Pi
 
@@ -97,7 +112,7 @@ Do not commit downloaded assets or generated reports. Do not broaden the source 
 - Ground tracks use Moon-fixed vector rotation preserving longitude-defined polar tangent axes; reference sphere/frame conventions unchanged.
 - Every horizon is a diagnostic sampled maximum with horizon_is_complete False and completeness UNRESOLVED (termination missing-raster vs search-cutoff). Reaching max-distance without missing data does not claim completeness. Never read a diagnostic maximum as a complete horizon or clear sky.
 - Radial grids are densified toward the 40 m cell scale (capped at 4096/azimuth); max_gap_m and spacing_within_cell describe point spacing. sampling_resolved remains False because this does not prove crossed-cell coverage or resolve the near field/between-ray terrain. A truncated grid reports radial-sampling-cap and its actual extent. Refinement is split into radial common-bearing and angular intermediate-bearing sensitivities, with the latter using the same fine radial grid on both bearings. Eligible complete-horizon comparisons are unavailable (not zero). No accuracy grid is locked.
-- Visible fraction keeps the uniform-disk circular-segment formula as an explicitly identified straight-edge approximation. Disks are evaluated over their azimuth footprint (half-width from disk radius/center elevation); any unresolved footprint coverage forces UNKNOWN with an empty fraction. FULL/BLOCKED need conservative bounds and PARTIAL needs an applicability condition, neither established here. Labels and fractions stay consistent (no 0/1 without bounds).
+- The uniform-disk circular-segment formula remains an unused straight-edge approximation. Current classification instead uses conservative sector-footprint inclusion and lower-bound obstruction witnesses. BLOCKED requires every possible sector to prove the disk obstructed, returning 0/[0,0]; otherwise UNKNOWN returns an empty scalar/[0,1]. FULL/PARTIAL remain disabled without supported upper bounds. Missing distant terrain does not undo an established obstruction.
 - Intervals use left-held sample state over [t_i, t_{i+1}); the terminal boundary sample carries zero elapsed time and starts no zero-length interval. Summaries weight by elapsed hours (counts stay labeled as counts), means cover known hours only, longest known blocked is a lower bound when unknown time remains, and all-UNKNOWN leaves the maximum unresolved. Six-hour sampling gives coarse estimates (e.g. FULL 0h/BLOCKED 6h/FULL 12h boundary = six FULL + six BLOCKED hours, fraction 1/2), not precise event times.
 - Earth-disk visibility is distinct from Earth-center communications visibility; no link-budget claim is made.
 - Shared cache: .environment.lock for the whole run plus .foundation.lock around asset acquisition/receipt snapshot (consistent order); stale-lock checks preserved.

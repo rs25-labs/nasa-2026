@@ -88,8 +88,8 @@ def covers_sector(v, k, east, north, up, start_deg, end_deg):
         return False
     A = dot(v, up)
     E, N = dot(v, east), dot(v, north)
-    s0, c0 = trig(str(start_deg))
-    s1, c1 = trig(str(end_deg))
+    s0, c0 = trig(start_deg)
+    s1, c1 = trig(end_deg)
     b0, b1 = E*s0 + N*c0, E*s1 + N*c1
     minimum = min(b0.lo, b1.lo)
     return A.lo > 0 and minimum > 0 and (A.square()+Interval(minimum).square()).lo > k.square().hi
@@ -193,7 +193,7 @@ def build_sector_bounds(terrain, site, profiles):
                 sector['witness_cell_id'] = record['cell_id']
     return evidence, sectors, {
         'model_id': MODEL_ID,
-        'scope': 'Cell enclosures and inner-cap obstruction witnesses only; no disk classification yet',
+        'scope': 'Cell enclosures and inner-cap obstruction witnesses; disk classification is reported separately',
         'arithmetic': '50-digit outward Decimal intervals; 100-term trig with Lagrange remainder',
         'candidate_selection': 'Observer cell neighborhood plus diagnostic-maximum neighborhoods; not exhaustive',
         'candidate_cap': CANDIDATE_CAP,
