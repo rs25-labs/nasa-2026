@@ -5,6 +5,11 @@
 `lml-composite-cell-solid-v1`. This extends conditional raster-model
 visibility; it does not establish a physical terrain-height envelope.
 
+Follow-on implementation: [Finite-Disk Visibility Milestone](LML-VISIBILITY-MILESTONE.md)
+adds latitude-band exterior bounds and projected-area subdivision, including a
+verified real PARTIAL result. The surface/model contract here is unchanged;
+the later milestone owns current algorithm, precision and execution status.
+
 ## Surface and sources
 
 Within the nominal south-of-85° cap, retain `lml-polar-cell-solid-v1`:

@@ -123,6 +123,10 @@ def write_visibility_plot(path: Path, timeseries: list[dict], site_id: str) -> N
         times = [parse_utc(r["utc"]) for r in selected]
         fracs = [r["visible_fraction"] if r["visible_fraction"] != "" else float("nan") for r in selected]
         ax.plot(times, fracs, marker="o", markersize=3, linewidth=1.0)
+        lower = [float(r.get('visible_fraction_lower',0)) for r in selected]
+        upper = [float(r.get('visible_fraction_upper',1)) for r in selected]
+        ax.fill_between(times,lower,upper,step='post',alpha=.22,label='visible fraction bounds')
+        ax.legend(loc='lower right')
         ax.set_ylim(-0.05, 1.05)
         ax.set(ylabel=f"{body} visible fraction")
         ax.text(0.02, 0.9, f"UNKNOWN samples: {sum(r['state'] == 'UNKNOWN' for r in selected)}", transform=ax.transAxes)
@@ -306,9 +310,10 @@ def main(argv: list[str] | None = None) -> int:
             with kernel_session(paths):
                 coverage = coverage_report(paths)
                 rows.extend(positions(site, timestamps))
-            timeseries = build_timeseries(rows, fine, sector_bounds, clearance)
+            timeseries = build_timeseries(rows, fine, sector_bounds, clearance, cell_evidence)
             if clearance is not None:
                 write_json(run / 'composite-clearance-proofs.json', clearance.proofs)
+                write_json(run / 'projected-disk-area-proofs.json', clearance.area_proofs)
                 nodes = clearance.node_evidence()
                 if nodes:
                     write_csv(run / 'composite-terrain-nodes.csv', nodes)
@@ -318,6 +323,18 @@ def main(argv: list[str] | None = None) -> int:
                 report['composite_clearance']['termination_counts'] = {
                     reason: sum(p['termination'] == reason for p in clearance.proofs)
                     for reason in sorted({p['termination'] for p in clearance.proofs})
+                }
+                report['disk_area_integration'] = {
+                    'integrator_id': 'lml-projected-disk-bounds-v1',
+                    'proof_artifact': 'projected-disk-area-proofs.json',
+                    'normalization': 'uniform projected area of unit image disk; circle-edge squares left uncertain',
+                    'samples_subdivided':len(clearance.area_proofs),
+                    'requested_fraction_width':.01,'tile_budget_per_sample':16384,
+                    'region_classification_budget_per_sample':4096,
+                    'terrain_node_budget_per_sample':32768,'maximum_tile_depth':10,
+                    'termination_counts':{reason:sum(p['termination']==reason for p in clearance.area_proofs)
+                                          for reason in sorted({p['termination'] for p in clearance.area_proofs})},
+                    'actual_widths':[p['fraction_width_upper'] for p in clearance.area_proofs],
                 }
             write_csv(run / "environment-timeseries.csv", timeseries)
             intervals: list[dict] = []
@@ -369,15 +386,15 @@ def main(argv: list[str] | None = None) -> int:
                     "terrain_bounds_checkpoint": bounds_report,
                     "disk_classification": {
                         "method": "witnessed sector obstruction; optional complete composite-terrain whole-disk clearance",
-                        "states_enabled": ["BLOCKED", "UNKNOWN"] + (["FULL"] if clearance else []),
-                        "counts": {state: sum(r['state'] == state for r in timeseries) for state in ("BLOCKED", "UNKNOWN", "FULL")},
+                        "states_enabled": ["BLOCKED", "UNKNOWN"] + (["FULL",'PARTIAL'] if clearance else []),
+                        "counts": {state: sum(r['state'] == state for r in timeseries) for state in ("BLOCKED", "UNKNOWN", "FULL",'PARTIAL')},
                         'model_id': COMPOSITE_MODEL_ID if clearance else bounds_report['model_id'],
                         "uncertainty": "conditional on constant-radius pixel solids and reported geometric directions; no physical height-error envelope",
                     },
                     "environment_conventions": {
                         "horizon_edge": "witnessed lower bounds over every possibly intersected closed sector; no constant-edge disk approximation used for classification",
-                        "visible_fraction": "BLOCKED [0,0]/0; FULL [1,1]/1 only with optional composite proof; UNKNOWN [0,1]/empty scalar",
-                        "states": "BLOCKED from polar subset witnesses; optional FULL from composite clearance; others UNKNOWN; PARTIAL disabled",
+                        "visible_fraction": "BLOCKED [0,0]/0; FULL [1,1]/1; PARTIAL and UNKNOWN retain proved area bounds with empty scalar",
+                        "states": "whole-disk proofs or bounded projected disk area; PARTIAL requires positive visible and blocked area; unresolved area stays uncertain",
                         "intervals": "left-held sample state over [t_i, t_{i+1}); terminal boundary sample carries zero elapsed time",
                         "summaries": "duration-weighted hours; scalar means over known hours only; fraction mean bounds cover all left-held hours, preserving unknowns; cadence is the requested step_hours",
                         "aberration": "NONE; geometric simultaneous positions",
@@ -392,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
                         "One south-polar-cap site per run; no global search in this batch.",
                         "No completeness bound: every horizon is INDETERMINATE (missing-raster vs search-cutoff); diagnostic maxima must not be read as clear.",
                         "Sparse point sampling with densified radial grid; unresolved gaps remain and are reported, not claimed as maxima.",
-                        "Whole-disk visibility is conditional on the explicitly reported raster model; physical height error is unbounded. PARTIAL and disk-area integration remain unavailable.",
+                        "Visibility fractions are conditional on the explicitly reported raster model; physical height error is unbounded. Actual fraction widths and work-limit termination are reported.",
                         "Duration-weighted coarse sampled estimates; longest blocked is a lower bound when unknown time remains.",
                         "Shared assets guarded by nested .environment.lock + .foundation.lock around acquisition; stale-lock checks preserved.",
                         "No power, thermal, comm-link, or training simulation in this batch; Earth-disk visibility is distinct from Earth-center communications visibility.",
@@ -411,6 +428,7 @@ def main(argv: list[str] | None = None) -> int:
                         "horizon.png",
                         "environment-visibility.png",
                         *(['composite-clearance-proofs.json'] if clearance else []),
+                        *(['projected-disk-area-proofs.json'] if clearance else []),
                         *(['composite-terrain-nodes.csv'] if clearance and clearance.cache else []),
                     ],
                 }

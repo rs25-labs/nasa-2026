@@ -78,3 +78,22 @@ class GlobalTerrain:
             'envelope_scope': 'Global raster pixel solids only; used outside polar cap; not physical lunar relief',
             'physical_height_error': 'unbounded; no supplied deterministic error envelope',
         }
+
+    def exterior_bands(self, cap_latitude):
+        """Row maxima over closed latitude bands covering the cap exterior.
+
+        Include a row touching the cap edge; shared-edge solids are a union.
+        Maxima over clipped rows may overestimate but never omit a pixel.
+        """
+        if not self.complete:
+            return []
+        stop = min(2880, math.floor((90-cap_latitude)*16)+1)
+        bands = []
+        for start in range(0,stop,16):
+            end = min(start+16,stop)
+            maximum = int(self.raw[start:end].max())
+            bands.append(dict(row_start=start,row_end_exclusive=end,
+                              latitude_south=max(cap_latitude,90-end/16),
+                              latitude_north=90-start/16,
+                              max_radius_m=1737400+maximum*.5))
+        return bands

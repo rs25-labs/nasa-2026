@@ -7,9 +7,10 @@ and optional model-conditional composite clearance are implemented and executed;
 see [Composite Model](LML-COMPOSITE-MODEL.md) and the current
 [execution checkpoint](LML-PI-HANDOFF-02.md). FULL now has a direct whole-disk
 proof when the composite model accounts for all terrain. Per-sector complete
-horizons, PARTIAL and projected-area integration remain pending; physical
-height error remains unbounded. The original method below records the earlier
-design; the composite contract governs the new optional FULL proof.
+horizons remain pending; physical height error remains unbounded. The
+[finite-disk milestone](LML-VISIBILITY-MILESTONE.md) now implements bounded
+projected-area integration and supported PARTIAL results. The original method
+below records the earlier design; the later contracts govern current behavior.
 
 ## Decision
 

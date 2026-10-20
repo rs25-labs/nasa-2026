@@ -14,8 +14,15 @@ ALLOWED_HOSTS = {"pds-geosciences.wustl.edu", "naif.jpl.nasa.gov"}
 def write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    try:
+        # Stream large proof artifacts rather than duplicating a complete
+        # JSON string in memory before the atomic replacement.
+        with temporary.open('w',encoding='utf-8') as stream:
+            json.dump(value,stream,indent=2,allow_nan=False)
+            stream.write('\n')
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def digests(path: Path) -> dict[str, str]:
