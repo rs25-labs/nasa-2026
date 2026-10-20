@@ -1,7 +1,8 @@
 """Pi entry point for Batch 02: horizon + obstructed Sun/Earth environment.
 
 Bounded scope: one site, one interval, reuse of Batch 01 seven-asset
-manifest and cache. No API, no frontend, no training engine. Missing
+manifest and cache, with an optional explicit global supplement. No API,
+no frontend, no training engine. Missing
 terrain stays INDETERMINATE/UNKNOWN; a coarser comparison grid reports
 diagnostic sensitivity without establishing an error bound.
 """
@@ -29,6 +30,8 @@ from .ephemeris import coverage_report, kernel_session, positions
 from .horizon import compare_refinement, horizon_profile
 from .terrain import PolarTerrain
 from .terrain_bounds import build_sector_bounds
+from .composite_bounds import CompositeClearance, MODEL_ID as COMPOSITE_MODEL_ID
+from .global_terrain import GlobalTerrain
 
 
 def parse_utc(value: str) -> datetime:
@@ -124,7 +127,7 @@ def write_visibility_plot(path: Path, timeseries: list[dict], site_id: str) -> N
         ax.set(ylabel=f"{body} visible fraction")
         ax.text(0.02, 0.9, f"UNKNOWN samples: {sum(r['state'] == 'UNKNOWN' for r in selected)}", transform=ax.transAxes)
         ax.grid(True, alpha=0.3)
-    axes[0].set_title(f"Model-conditional whole-disk obstruction; UNKNOWN where unproven — {site_id}")
+    axes[0].set_title(f"Model-conditional whole-disk visibility; UNKNOWN where unproven — {site_id}")
     axes[1].set_xlabel("UTC")
     fig.savefig(path, dpi=140)
     plt.close(fig)
@@ -146,6 +149,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--distance-steps", type=int, default=256)
     parser.add_argument("--max-download-mib", type=float, default=160.0)
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument('--global-sources', type=Path, help='Optional explicit composite-global supplement manifest')
+    parser.add_argument('--max-global-download-mib', type=float, default=40.0)
     args = parser.parse_args(argv)
 
     root = args.work_dir.resolve()
@@ -175,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
                 ("days", args.days, 1, 30),
                 ("step-hours", args.step_hours, 0.25, 24),
                 ("max-download-mib", args.max_download_mib, 1, 2048),
+                ('max-global-download-mib', args.max_global_download_mib, 1, 64),
                 ("observer-height-m", args.observer_height_m, 0, 20),
                 ("az-step-deg", args.az_step_deg, 0.25, 10),
                 ("max-distance-m", args.max_distance_m, 5000, 400000),
@@ -217,8 +223,21 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("Requested sample grid exceeds foundation limit")
 
             acquired_at = time.perf_counter()
+            global_spec = None
+            if args.global_sources:
+                global_content = args.global_sources.resolve().read_bytes()
+                global_spec = json.loads(global_content)
+                if (global_spec.get('schema_version') != 1 or global_spec.get('model_id') != COMPOSITE_MODEL_ID
+                        or global_spec.get('reference_frame') != 'MOON_ME_DE421'
+                        or global_spec.get('terrain_reference_radius_m') != 1737400):
+                    raise ValueError('Unsupported composite global manifest contract')
             with exclusive_workdir(root, ".foundation.lock"):
                 paths, receipts = acquire_assets(spec, root, args.offline, args.max_download_mib)
+                if global_spec is not None:
+                    global_paths, global_receipts = acquire_assets(
+                        global_spec, root, args.offline, args.max_global_download_mib, profile='composite-global')
+                    paths.update(global_paths)
+                    receipts.update(global_receipts)
                 # Snapshot receipts while still holding the foundation lock.
                 write_json(run / "source-receipts.json", receipts)
             report["asset_acquisition_wall_seconds"] = time.perf_counter() - acquired_at
@@ -227,6 +246,14 @@ def main(argv: list[str] | None = None) -> int:
             terrain = PolarTerrain(paths["terrain_label"], paths["terrain_image"])
             sampled = terrain.sample(args.latitude_deg, args.longitude_deg, args.observer_height_m)
             site = {"id": args.site_id, **sampled}
+            clearance = None
+            if global_spec is not None:
+                global_terrain = GlobalTerrain(paths['global_terrain_label'], paths['global_terrain_image'])
+                clearance = CompositeClearance(terrain, global_terrain, site)
+                report['composite_source_manifest'] = {
+                    'path': str(args.global_sources.resolve()),
+                    'sha256': hashlib.sha256(global_content).hexdigest(), 'model_id': COMPOSITE_MODEL_ID,
+                }
             write_csv(run / "site-sample.csv", [site])
 
             horizon_began = time.perf_counter()
@@ -279,7 +306,19 @@ def main(argv: list[str] | None = None) -> int:
             with kernel_session(paths):
                 coverage = coverage_report(paths)
                 rows.extend(positions(site, timestamps))
-            timeseries = build_timeseries(rows, fine, sector_bounds)
+            timeseries = build_timeseries(rows, fine, sector_bounds, clearance)
+            if clearance is not None:
+                write_json(run / 'composite-clearance-proofs.json', clearance.proofs)
+                nodes = clearance.node_evidence()
+                if nodes:
+                    write_csv(run / 'composite-terrain-nodes.csv', nodes)
+                report['composite_clearance'] = clearance.metadata()
+                report['composite_clearance']['proof_artifact'] = 'composite-clearance-proofs.json'
+                report['composite_clearance']['nodes_artifact'] = 'composite-terrain-nodes.csv' if nodes else None
+                report['composite_clearance']['termination_counts'] = {
+                    reason: sum(p['termination'] == reason for p in clearance.proofs)
+                    for reason in sorted({p['termination'] for p in clearance.proofs})
+                }
             write_csv(run / "environment-timeseries.csv", timeseries)
             intervals: list[dict] = []
             summaries: list[dict] = []
@@ -329,15 +368,16 @@ def main(argv: list[str] | None = None) -> int:
                     "refinement": refinement,
                     "terrain_bounds_checkpoint": bounds_report,
                     "disk_classification": {
-                        "method": "interval meridian-half-space footprint superset; all included sector lower bounds strictly above entire disk",
-                        "states_enabled": ["BLOCKED", "UNKNOWN"],
-                        "counts": {state: sum(r['state'] == state for r in timeseries) for state in ("BLOCKED", "UNKNOWN")},
+                        "method": "witnessed sector obstruction; optional complete composite-terrain whole-disk clearance",
+                        "states_enabled": ["BLOCKED", "UNKNOWN"] + (["FULL"] if clearance else []),
+                        "counts": {state: sum(r['state'] == state for r in timeseries) for state in ("BLOCKED", "UNKNOWN", "FULL")},
+                        'model_id': COMPOSITE_MODEL_ID if clearance else bounds_report['model_id'],
                         "uncertainty": "conditional on constant-radius pixel solids and reported geometric directions; no physical height-error envelope",
                     },
                     "environment_conventions": {
                         "horizon_edge": "witnessed lower bounds over every possibly intersected closed sector; no constant-edge disk approximation used for classification",
-                        "visible_fraction": "BLOCKED has [0,0] and scalar 0; UNKNOWN has [0,1] and empty scalar; straight-edge utility remains an unused approximation",
-                        "states": "BLOCKED only with whole-disk witness proof; remaining rows UNKNOWN; FULL/PARTIAL disabled without supported upper terrain bounds",
+                        "visible_fraction": "BLOCKED [0,0]/0; FULL [1,1]/1 only with optional composite proof; UNKNOWN [0,1]/empty scalar",
+                        "states": "BLOCKED from polar subset witnesses; optional FULL from composite clearance; others UNKNOWN; PARTIAL disabled",
                         "intervals": "left-held sample state over [t_i, t_{i+1}); terminal boundary sample carries zero elapsed time",
                         "summaries": "duration-weighted hours; scalar means over known hours only; fraction mean bounds cover all left-held hours, preserving unknowns; cadence is the requested step_hours",
                         "aberration": "NONE; geometric simultaneous positions",
@@ -352,7 +392,7 @@ def main(argv: list[str] | None = None) -> int:
                         "One south-polar-cap site per run; no global search in this batch.",
                         "No completeness bound: every horizon is INDETERMINATE (missing-raster vs search-cutoff); diagnostic maxima must not be read as clear.",
                         "Sparse point sampling with densified radial grid; unresolved gaps remain and are reported, not claimed as maxima.",
-                        "Whole-disk blockage is conditional on the raster model; unproven rows are UNKNOWN with [0,1] fraction bounds. No FULL/PARTIAL results or disk-area integration.",
+                        "Whole-disk visibility is conditional on the explicitly reported raster model; physical height error is unbounded. PARTIAL and disk-area integration remain unavailable.",
                         "Duration-weighted coarse sampled estimates; longest blocked is a lower bound when unknown time remains.",
                         "Shared assets guarded by nested .environment.lock + .foundation.lock around acquisition; stale-lock checks preserved.",
                         "No power, thermal, comm-link, or training simulation in this batch; Earth-disk visibility is distinct from Earth-center communications visibility.",
@@ -370,6 +410,8 @@ def main(argv: list[str] | None = None) -> int:
                         "environment-intervals.csv",
                         "horizon.png",
                         "environment-visibility.png",
+                        *(['composite-clearance-proofs.json'] if clearance else []),
+                        *(['composite-terrain-nodes.csv'] if clearance and clearance.cache else []),
                     ],
                 }
             )

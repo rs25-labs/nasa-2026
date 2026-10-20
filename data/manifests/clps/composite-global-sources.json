@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "model_id": "lml-composite-cell-solid-v1",
+  "reference_frame": "MOON_ME_DE421",
+  "terrain_reference_radius_m": 1737400,
+  "assets": [
+    {
+      "id": "global_terrain_label",
+      "filename": "ldem_16.lbl",
+      "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.lbl",
+      "max_bytes": 65536
+    },
+    {
+      "id": "global_terrain_image",
+      "filename": "ldem_16.img",
+      "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.img",
+      "max_bytes": 33177600,
+      "expected_bytes": 33177600
+    }
+  ],
+  "notes": [
+    "Optional supplement; the foundation manifest still requires exactly seven assets.",
+    "Raster-model upper envelope only. No bound on actual lunar terrain or subpixel relief.",
+    "Global pixel solids apply outside the nominal polar cap; the shared edge is their union.",
+    "Official HTTPS, byte checks and observed SHA-256 receipts; no pre-pinned upstream hash."
+  ]
+}

@@ -6,6 +6,11 @@ proposed upper bound, report the limitation and smallest concrete resolution.
 No acquisition/model integration is delivered by this checkpoint. L03 and
 Batch 02 remain incomplete.
 
+Subsequent owner approval implemented the conditional composite model;
+see [Composite Model](LML-COMPOSITE-MODEL.md) for the current contract and
+execution evidence. This source-gate assessment is retained as the historical
+decision record; its no-integration status describes that earlier checkpoint.
+
 ## Verified candidate
 
 **Select PDS LOLA LDEM_16 V3.1 as the candidate for a subsequent global

@@ -2,7 +2,14 @@
 
 2026-10-20. Scope: the conservative-method checkpoint authorized after the corrected Batch 02 diagnostic. This defines the next calculation; it does not claim the algorithm has been implemented or scientifically validated. No new sources, API/UI, training engine, or SPHEREx work.
 
-Implementation update: bounded cell/sector enclosures and whole-disk obstruction classification are implemented and executed; see [enclosure plan](LML-BOUNDS-IMPLEMENTATION-PLAN.md), [disk plan](LML-DISK-IMPLEMENTATION-PLAN.md) and [execution checkpoint](LML-PI-HANDOFF-02.md). Useful global upper bounds, FULL/PARTIAL results and projected-area integration remain pending. The full method below is not yet delivered.
+Implementation update: bounded cell/sector enclosures, whole-disk obstruction,
+and optional model-conditional composite clearance are implemented and executed;
+see [Composite Model](LML-COMPOSITE-MODEL.md) and the current
+[execution checkpoint](LML-PI-HANDOFF-02.md). FULL now has a direct whole-disk
+proof when the composite model accounts for all terrain. Per-sector complete
+horizons, PARTIAL and projected-area integration remain pending; physical
+height error remains unbounded. The original method below records the earlier
+design; the composite contract governs the new optional FULL proof.
 
 ## Decision
 

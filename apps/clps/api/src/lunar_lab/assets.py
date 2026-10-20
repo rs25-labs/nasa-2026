@@ -40,15 +40,21 @@ def validate_bytes(path: Path, asset: dict) -> dict[str, str]:
     return hashes
 
 
-def acquire_assets(spec: dict, root: Path, offline: bool, budget_mib: float) -> tuple[dict, dict]:
+def acquire_assets(spec: dict, root: Path, offline: bool, budget_mib: float, *, profile: str = 'foundation') -> tuple[dict, dict]:
     folder = root / "assets"
     folder.mkdir(parents=True, exist_ok=True)
     ledger_path = root / "asset-receipts.json"
     ledger = json.loads(ledger_path.read_text()) if ledger_path.exists() else {}
     paths, receipts = {}, {}
-    required_ids = {"terrain_label", "terrain_image", "lsk", "constants", "spk", "orientation", "frames"}
+    profiles = {
+        'foundation': {"terrain_label", "terrain_image", "lsk", "constants", "spk", "orientation", "frames"},
+        'composite-global': {'global_terrain_label', 'global_terrain_image'},
+    }
+    if profile not in profiles:
+        raise ValueError('Unsupported asset manifest profile')
+    required_ids = profiles[profile]
     if {item["id"] for item in spec["assets"]} != required_ids:
-        raise ValueError("Source manifest must define the seven expected asset IDs exactly once")
+        raise ValueError(f"Source manifest must define the {profile} asset IDs exactly once")
     if len(spec["assets"]) != len(required_ids):
         raise ValueError("Duplicate asset IDs in source manifest")
     filenames = [item["filename"] for item in spec["assets"]]

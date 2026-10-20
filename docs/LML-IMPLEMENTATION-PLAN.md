@@ -20,6 +20,15 @@ Generated code has not been executed by Codex. Source review is not runtime veri
 
 Generate wider-terrain acquisition, curvature-aware horizon computation, finite-disk visibility, intervals, and mission metrics. Pi returns one site's horizon/environment and a bounded refinement comparison. Owner reviews before API/interface work. Missing coverage remains explicit.
 
+Current owner-authorized execution checkpoint (2026-10-20): optional
+[composite raster clearance](LML-COMPOSITE-MODEL.md) and prior polar
+obstruction proofs now produce model-conditional FULL/BLOCKED results.
+Sample-a: Sun 29 BLOCKED; Earth 7 FULL / 22 UNKNOWN. Bounded disk-area
+integration/PARTIAL remain pending, so Batch 02/L03 is incomplete. The
+owner's continuation instructions authorize bounded Codex execution and
+PR/merge delivery, superseding the older execution assignment above for
+these checkpoints. No API/UI, training or SPHEREx work is included.
+
 ## Batch 03 — Planner workflow
 
 Generate API/jobs and the working polar map, scenario editor, sky/timeline/results. Pi returns a running preview for new user inputs. Complete site/date comparison and landing-window search in a bounded follow-up after review.
