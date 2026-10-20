@@ -1,11 +1,26 @@
 # Lunar Mission Lab — Pi Handoff 02
 
-Status: correction pass applied and **one offline diagnostic executed by Codex on 2026-10-20**, explicitly authorized by the owner. Pipeline execution succeeded; L03 scientific acceptance remains blocked by unresolved horizon/footprint bounds. Prior Pi reference run below is historical evidence from uncorrected code.
+Status: corrections and **cell/sector enclosure step implemented and executed by Codex on 2026-10-20**, explicitly authorized by the owner. Pipeline execution succeeded; L03 scientific acceptance remains blocked by unresolved upper bounds and pending whole-disk classification. Prior Pi reference run below is historical evidence from uncorrected code.
 Batch: horizon and operating environment (one site, diagnostic only).
 Scope authority: [Lunar Mission Lab PRD](PRD-LUNAR-MISSION-LAB.md).
 Active sequence: [Implementation Plan](LML-IMPLEMENTATION-PLAN.md) Batch 02.
 Code branch: feat/lunar-environment (branched from feat/lunar-foundation).
 Prior batch: [Pi Handoff 01](LML-PI-HANDOFF-01.md) — foundation must be reviewed before relying on these environments.
+
+## Cell/sector enclosure checkpoint — 2026-10-20
+
+Implementation: [bounded plan](LML-BOUNDS-IMPLEMENTATION-PLAN.md), step 1 of [bounds design](LML-HORIZON-BOUNDS-DESIGN.md). No new sources, dependencies, API/UI, disk-area integrator, or generated test suite.
+
+- Corrected run: `data/local/lml/env-runs/20261020T185541Z-87e28417/`; exit 0, eleven nonempty artifacts, 22.40 seconds elapsed, peak process memory 231.83 MiB. Geometry bounds took 3.84 seconds.
+- Same original request, offline, seven assets reused. Prefix the execution command with `PYTHONPATH=apps/clps/api/src MPLCONFIGDIR=/private/tmp/lml-matplotlib` on this checkout. Fontconfig still reported unwritable user cache locations; PNG generation succeeded.
+- 4,065 valid candidate cells enclosed, including the observer cell; the 8,192-cell candidate cap was not reached. Candidate discovery follows diagnostic-maximum neighborhoods and may miss useful witnesses; it never establishes complete terrain coverage.
+- Every cell records an inner projected circle mapped to a spherical cap for witnesses and an outer cap enclosing the full square pixel. The inner circle must lie wholly inside the nominal product cap before use. No clipped/outside region is called empty.
+- 1,440 closed sectors partition all azimuths at 0.25 degrees, with shared boundaries. 1,436 have a valid lower-bound witness; four remain at the trivial -90-degree lower bound. All upper bounds remain unavailable. These are bounds conditional on constant-radius pixel solids, without a physical terrain-error envelope.
+- New artifacts: `terrain-cell-enclosures.csv` (inner/outer cap interval coefficients and cell IDs) and `horizon-sector-bounds.csv` (lower bounds, witness IDs, upper-bound availability and reasons). Existing horizon diagnostics remain INDETERMINATE.
+- Focused checks passed for cardinal trigonometric enclosures, polar sectors, 0/360 wrap, wide/opposite-sector rejection, elevation sign, cap containment, and independent PyProj axis conventions. PyProj comparison used 1e-12 unit-vector tolerance as a sanity check, not as the interval proof. Deciding bounds use 50-digit outward Decimal operations and Taylor remainder bounds; analytic construction is recorded in the plan/code.
+- An initial run `20261020T185353Z-e51d521b` exposed a projected-axis swap during review. It is superseded, with a `SUPERSEDED.txt` note in that ignored output directory. The corrected run above is the reference; do not use the earlier cell/sector geometry.
+- Artifact checks confirmed all witness IDs resolve, sectors cover 0–360 without gaps, both body summaries cover 168 hours, and both locks were released. Visibility stays UNKNOWN by design in this step because sector-to-disk classification is not yet wired.
+- **Next action:** implement whole-disk obstruction classification from these sector lower bounds, including all intersected sectors and explicit gap propagation. No FULL claim without a supported terrain upper envelope. Batch 02/L03 is not complete.
 
 ## Corrected execution checkpoint — 2026-10-20
 
@@ -18,7 +33,7 @@ Prior batch: [Pi Handoff 01](LML-PI-HANDOFF-01.md) — foundation must be review
 - Radial diagnostic differences: max 0.059436 degrees, mean 0.007670 degrees (90 common bearings). Angular diagnostic differences: max 0.613648 degrees, mean 0.177119 degrees (90 intermediate bearings, holding the fine radial grid fixed). Neither establishes an accuracy bound or validates the grid.
 - Additional corrections: a capped grid reports its actual extent and `radial-sampling-cap`; cell-scale point spacing is reported separately from unresolved crossed-cell coverage; unusable maxima are excluded from refinement comparisons; nonfinite disk elevations are rejected; summary cadence text follows the requested cadence.
 - Verification was bounded to this execution and inspection of its artifacts. No generated test suite or concurrency/stale-lock stress test was performed. Matplotlib used a temporary font cache after reporting that user cache locations were unwritable; both PNG files were generated.
-- **Method checkpoint:** the owner authorized defining conservative one-site terrain/footprint bounds; see [Horizon Bounds Design](LML-HORIZON-BOUNDS-DESIGN.md). It separates obstruction witnesses from upper/completeness bounds and specifies whole-disk classification. The method is documented, not implemented. Next implementation is the bounded cell/sector enclosure step in that document. Do not promote the existing diagnostic to a usable visibility planner or claim Batch 02/L03 complete.
+- **Method checkpoint:** see [Horizon Bounds Design](LML-HORIZON-BOUNDS-DESIGN.md). Its cell/sector enclosure step has now been implemented (checkpoint above); whole-disk classification and useful upper bounds remain pending. Do not promote the existing diagnostic to a usable visibility planner or claim Batch 02/L03 complete.
 
 ## Assignment for Pi
 
@@ -55,7 +70,7 @@ Expected output layout:
 - data/local/lml/assets — reused files, ignored by Git.
 - data/local/lml/asset-receipts.json — unchanged unless cache was missing.
 - data/local/lml/env-runs/<generated-run-id>/environment-report.json.
-- Same run folder: source-receipts.json, site-sample.csv, horizon-profile.csv, horizon-profile-coarse.csv, environment-timeseries.csv, environment-intervals.csv, horizon.png, environment-visibility.png.
+- Same run folder: source-receipts.json, site-sample.csv, horizon-profile.csv, horizon-profile-coarse.csv, terrain-cell-enclosures.csv (when valid candidates exist), horizon-sector-bounds.csv, environment-timeseries.csv, environment-intervals.csv, horizon.png, environment-visibility.png.
 
 Reference run (Pi, UNCORRECTED code, historical only): data/local/lml/env-runs/20261019T002657Z-481564d9/ — 95 DETERMINED / 85 INDETERMINATE azimuths, refinement max diff 0.22 deg, Sun 13 BLOCKED / 16 UNKNOWN, Earth 29 UNKNOWN. Do not compare corrected-code outputs against these counts; corrected code reports all horizons INDETERMINATE and all footprint rows UNKNOWN.
 

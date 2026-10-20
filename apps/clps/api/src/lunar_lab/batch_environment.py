@@ -28,6 +28,7 @@ from .environment import build_timeseries, compress_intervals, summarize
 from .ephemeris import coverage_report, kernel_session, positions
 from .horizon import compare_refinement, horizon_profile
 from .terrain import PolarTerrain
+from .terrain_bounds import build_sector_bounds
 
 
 def parse_utc(value: str) -> datetime:
@@ -251,6 +252,10 @@ def main(argv: list[str] | None = None) -> int:
             horizon_seconds = time.perf_counter() - horizon_began
             write_csv(run / "horizon-profile.csv", fine)
             write_csv(run / "horizon-profile-coarse.csv", coarse)
+            cell_evidence, sector_bounds, bounds_report = build_sector_bounds(terrain, site, fine)
+            if cell_evidence:
+                write_csv(run / "terrain-cell-enclosures.csv", cell_evidence)
+            write_csv(run / "horizon-sector-bounds.csv", sector_bounds)
 
             # Split refinement reporting: radial vs angular diagnostic
             # sensitivities; never a guaranteed error bound.
@@ -321,6 +326,7 @@ def main(argv: list[str] | None = None) -> int:
                         "horizon_wall_seconds": horizon_seconds,
                     },
                     "refinement": refinement,
+                    "terrain_bounds_checkpoint": bounds_report,
                     "environment_conventions": {
                         "horizon_edge": "horizontal straight edge at disk footprint (approximation); varying-horizon integration not modeled",
                         "visible_fraction": "uniform-disk circular segment 0.5+(u*sqrt(1-u^2)+asin(u))/pi; approximation with unestablished applicability in this pass",
@@ -351,6 +357,8 @@ def main(argv: list[str] | None = None) -> int:
                         "site-sample.csv",
                         "horizon-profile.csv",
                         "horizon-profile-coarse.csv",
+                        *(["terrain-cell-enclosures.csv"] if cell_evidence else []),
+                        "horizon-sector-bounds.csv",
                         "environment-timeseries.csv",
                         "environment-intervals.csv",
                         "horizon.png",

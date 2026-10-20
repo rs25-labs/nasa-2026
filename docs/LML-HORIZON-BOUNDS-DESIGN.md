@@ -2,6 +2,8 @@
 
 2026-10-20. Scope: the conservative-method checkpoint authorized after the corrected Batch 02 diagnostic. This defines the next calculation; it does not claim the algorithm has been implemented or scientifically validated. No new sources, API/UI, training engine, or SPHEREx work.
 
+Implementation update: the bounded cell/sector enclosure step is now implemented and executed; see [implementation plan](LML-BOUNDS-IMPLEMENTATION-PLAN.md) and [execution checkpoint](LML-PI-HANDOFF-02.md). Whole-disk classification and useful global upper bounds remain pending. The full method below is not yet delivered.
+
 ## Decision
 
 Use bounds over terrain **areas and azimuth sectors**, then bounds over the **whole apparent disk**. Classify only what those bounds establish. A complete horizon is sufficient but is not necessary to prove an obstruction: missing distant terrain cannot undo an already-established obstruction.
