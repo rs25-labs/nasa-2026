@@ -28,6 +28,7 @@ from .environment import build_timeseries, compress_intervals, summarize
 from .ephemeris import coverage_report, kernel_session, positions
 from .horizon import compare_refinement, horizon_profile
 from .terrain import PolarTerrain
+from .terrain_bounds import build_sector_bounds
 
 
 def parse_utc(value: str) -> datetime:
@@ -121,8 +122,9 @@ def write_visibility_plot(path: Path, timeseries: list[dict], site_id: str) -> N
         ax.plot(times, fracs, marker="o", markersize=3, linewidth=1.0)
         ax.set_ylim(-0.05, 1.05)
         ax.set(ylabel=f"{body} visible fraction")
+        ax.text(0.02, 0.9, f"UNKNOWN samples: {sum(r['state'] == 'UNKNOWN' for r in selected)}", transform=ax.transAxes)
         ax.grid(True, alpha=0.3)
-    axes[0].set_title(f"Obstructed disk fraction (straight-edge approx; UNKNOWN when footprint unresolved) — {site_id}")
+    axes[0].set_title(f"Model-conditional whole-disk obstruction; UNKNOWN where unproven — {site_id}")
     axes[1].set_xlabel("UTC")
     fig.savefig(path, dpi=140)
     plt.close(fig)
@@ -251,6 +253,10 @@ def main(argv: list[str] | None = None) -> int:
             horizon_seconds = time.perf_counter() - horizon_began
             write_csv(run / "horizon-profile.csv", fine)
             write_csv(run / "horizon-profile-coarse.csv", coarse)
+            cell_evidence, sector_bounds, bounds_report = build_sector_bounds(terrain, site, fine)
+            if cell_evidence:
+                write_csv(run / "terrain-cell-enclosures.csv", cell_evidence)
+            write_csv(run / "horizon-sector-bounds.csv", sector_bounds)
 
             # Split refinement reporting: radial vs angular diagnostic
             # sensitivities; never a guaranteed error bound.
@@ -273,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
             with kernel_session(paths):
                 coverage = coverage_report(paths)
                 rows.extend(positions(site, timestamps))
-            timeseries = build_timeseries(rows, fine)
+            timeseries = build_timeseries(rows, fine, sector_bounds)
             write_csv(run / "environment-timeseries.csv", timeseries)
             intervals: list[dict] = []
             summaries: list[dict] = []
@@ -321,12 +327,19 @@ def main(argv: list[str] | None = None) -> int:
                         "horizon_wall_seconds": horizon_seconds,
                     },
                     "refinement": refinement,
+                    "terrain_bounds_checkpoint": bounds_report,
+                    "disk_classification": {
+                        "method": "interval meridian-half-space footprint superset; all included sector lower bounds strictly above entire disk",
+                        "states_enabled": ["BLOCKED", "UNKNOWN"],
+                        "counts": {state: sum(r['state'] == state for r in timeseries) for state in ("BLOCKED", "UNKNOWN")},
+                        "uncertainty": "conditional on constant-radius pixel solids and reported geometric directions; no physical height-error envelope",
+                    },
                     "environment_conventions": {
-                        "horizon_edge": "horizontal straight edge at disk footprint (approximation); varying-horizon integration not modeled",
-                        "visible_fraction": "uniform-disk circular segment 0.5+(u*sqrt(1-u^2)+asin(u))/pi; approximation with unestablished applicability in this pass",
-                        "states": "FULL/PARTIAL/BLOCKED need complete-footprint bounds; all current rows UNKNOWN with empty fraction",
+                        "horizon_edge": "witnessed lower bounds over every possibly intersected closed sector; no constant-edge disk approximation used for classification",
+                        "visible_fraction": "BLOCKED has [0,0] and scalar 0; UNKNOWN has [0,1] and empty scalar; straight-edge utility remains an unused approximation",
+                        "states": "BLOCKED only with whole-disk witness proof; remaining rows UNKNOWN; FULL/PARTIAL disabled without supported upper terrain bounds",
                         "intervals": "left-held sample state over [t_i, t_{i+1}); terminal boundary sample carries zero elapsed time",
-                        "summaries": "duration-weighted hours and fractions; means over known hours only; cadence is the requested step_hours",
+                        "summaries": "duration-weighted hours; scalar means over known hours only; fraction mean bounds cover all left-held hours, preserving unknowns; cadence is the requested step_hours",
                         "aberration": "NONE; geometric simultaneous positions",
                     },
                     "summaries": summaries,
@@ -339,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
                         "One south-polar-cap site per run; no global search in this batch.",
                         "No completeness bound: every horizon is INDETERMINATE (missing-raster vs search-cutoff); diagnostic maxima must not be read as clear.",
                         "Sparse point sampling with densified radial grid; unresolved gaps remain and are reported, not claimed as maxima.",
-                        "Straight-edge uniform-disk approximation only; footprint-unresolved rows are UNKNOWN with no numeric fraction.",
+                        "Whole-disk blockage is conditional on the raster model; unproven rows are UNKNOWN with [0,1] fraction bounds. No FULL/PARTIAL results or disk-area integration.",
                         "Duration-weighted coarse sampled estimates; longest blocked is a lower bound when unknown time remains.",
                         "Shared assets guarded by nested .environment.lock + .foundation.lock around acquisition; stale-lock checks preserved.",
                         "No power, thermal, comm-link, or training simulation in this batch; Earth-disk visibility is distinct from Earth-center communications visibility.",
@@ -351,6 +364,8 @@ def main(argv: list[str] | None = None) -> int:
                         "site-sample.csv",
                         "horizon-profile.csv",
                         "horizon-profile-coarse.csv",
+                        *(["terrain-cell-enclosures.csv"] if cell_evidence else []),
+                        "horizon-sector-bounds.csv",
                         "environment-timeseries.csv",
                         "environment-intervals.csv",
                         "horizon.png",

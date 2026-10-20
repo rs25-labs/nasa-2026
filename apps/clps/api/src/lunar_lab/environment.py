@@ -4,12 +4,10 @@ Correction pass (Codex audit):
 - The circular-segment formula is preserved as an explicitly identified
   approximation for a uniform disk behind a horizontal straight edge. It
   is not a varying-horizon integrator.
-- No disk is classified from a single center-azimuth profile. The disk's
-  azimuth footprint is checked for unresolved coverage/horizon
-  uncertainty; any gap propagates to UNKNOWN. FULL/BLOCKED need
-  conservative bounds that do not exist in this pass, and PARTIAL needs
-  an applicability condition that is not established, so current profiles
-  yield UNKNOWN with no numeric fraction.
+- Whole-disk BLOCKED requires witnessed lower bounds above the disk in
+  every potentially intersected sector. Missing witnesses propagate to
+  UNKNOWN; a complete horizon is not required to prove obstruction.
+  FULL/PARTIAL remain unavailable without supported upper terrain bounds.
 - Intervals use an explicit left-held sample-state interpretation over
   [t_i, t_{i+1}); the terminal boundary sample carries zero elapsed time
   and starts no zero-length interval.
@@ -21,7 +19,9 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
-from .horizon import horizon_at_azimuth, profiles_in_footprint
+from .bounded_math import Interval
+from .disk_bounds import classify_disk, prepare_sectors
+from .horizon import horizon_at_azimuth
 
 
 def visible_fraction(center_elev_deg: float, horizon_elev_deg: float, radius_deg: float) -> float:
@@ -87,6 +87,7 @@ def _unknown_row(row: dict, horizon, reason: str, half_width: float, footprint_c
         "horizon_status": horizon["status"],
         "angular_radius_deg": row["angular_radius_deg"],
         "footprint_half_width_deg": round(float(half_width), 6),
+        "footprint_half_width_basis": "diagnostic only; deciding footprint is an interval half-space superset",
         "footprint_profiles": int(footprint_count),
         "visible_fraction": "",
         "state": "UNKNOWN",
@@ -94,42 +95,22 @@ def _unknown_row(row: dict, horizon, reason: str, half_width: float, footprint_c
     }
 
 
-def build_timeseries(geometry_rows: list[dict], profiles: list[dict]) -> list[dict]:
+def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bounds: list[dict] | None = None) -> list[dict]:
     """Join each geometric row with its disk footprint's horizon state.
 
-    No complete-horizon bound exists in this pass (every profile is
-    INDETERMINATE with horizon_is_complete False), so every footprint is
-    unresolved and every row is UNKNOWN. The FULL/PARTIAL/BLOCKED path is
-    retained for a future bounded pass but requires all footprint profiles
-    to be complete with a straight-edge applicability bound; otherwise the
-    row stays UNKNOWN with an empty fraction to keep labels consistent.
+    Legacy profile values remain diagnostic only. The separate sector
+    evidence supplies the sufficient whole-disk obstruction condition.
+    No bounds supplied is equivalent to unknown coverage everywhere.
     """
     out = []
+    sectors = prepare_sectors(sector_bounds or [])
     for row in geometry_rows:
         horizon = horizon_at_azimuth(profiles, row["azimuth_deg"])
         half_width = footprint_half_width_deg(row["center_elevation_deg"], row["angular_radius_deg"])
-        footprint = profiles_in_footprint(profiles, row["azimuth_deg"], half_width)
-        if not footprint:
-            out.append(_unknown_row(row, horizon, "no-footprint-coverage", half_width, 0))
-            continue
-        unresolved = [p for p in footprint if (p.get("status") != "DETERMINED" or not p.get("horizon_is_complete"))]
-        if unresolved:
-            out.append(
-                _unknown_row(
-                    row, horizon, "footprint-unresolved: INDETERMINATE or incomplete horizon", half_width, len(footprint)
-                )
-            )
-            continue
-        if any(not p.get("sampling_resolved", False) for p in footprint):
-            out.append(
-                _unknown_row(row, horizon, "footprint-unresolved: radial sampling", half_width, len(footprint))
-            )
-            continue
-        # Reachable only with complete, resolved footprints plus a
-        # straight-edge applicability bound (not established here).
-        out.append(
-            _unknown_row(row, horizon, "straight-edge applicability unestablished", half_width, len(footprint))
-        )
+        result = classify_disk(row, sectors)
+        joined = _unknown_row(row, horizon, result['state_reason'], half_width, 0)
+        joined.update(result)
+        out.append(joined)
     return out
 
 
@@ -220,13 +201,28 @@ def summarize(timeseries: list[dict], intervals: list[dict], site_id: str, body:
     total_hours = sum(durations)
     hours_by_state = {name: 0.0 for name in ("FULL", "PARTIAL", "BLOCKED", "UNKNOWN")}
     weighted_frac = 0.0
+    weighted_lower = Interval(0)
+    weighted_upper = Interval(0)
     known_hours = 0.0
     for row, hours in zip(series, durations):
         hours_by_state[row["state"]] += hours
+        scalar = row["visible_fraction"]
+        lower = float(row.get("visible_fraction_lower", scalar if scalar != "" else 0))
+        upper = float(row.get("visible_fraction_upper", scalar if scalar != "" else 1))
+        if not all(math.isfinite(v) for v in (lower, upper)) or not 0 <= lower <= upper <= 1:
+            raise ValueError("Invalid visible-fraction bounds")
+        weighted_lower = weighted_lower + Interval(lower)*Interval(hours)
+        weighted_upper = weighted_upper + Interval(upper)*Interval(hours)
         if row["visible_fraction"] != "":
             weighted_frac += float(row["visible_fraction"]) * hours
             known_hours += hours
     body_intervals = [i for i in intervals if i["site_id"] == site_id and i["body"] == body]
+    duration = sum((Interval(h) for h in durations), Interval(0))
+    if total_hours > 0:
+        all_time_lower = max(0.0, math.nextafter(float((weighted_lower/duration).lo), -math.inf))
+        all_time_upper = min(1.0, math.nextafter(float((weighted_upper/duration).hi), math.inf))
+    else:
+        all_time_lower, all_time_upper = "", ""
     blocked_hours = [i["duration_hours"] for i in body_intervals if i["state"] == "BLOCKED"]
     unknown_hours = hours_by_state["UNKNOWN"]
     if total_hours > 0:
@@ -262,6 +258,9 @@ def summarize(timeseries: list[dict], intervals: list[dict], site_id: str, body:
         "blocked_fraction": blocked_fraction,
         "unknown_fraction": unknown_fraction,
         "mean_visible_fraction": mean_fraction,
+        "mean_visible_fraction_lower": all_time_lower,
+        "mean_visible_fraction_upper": all_time_upper,
+        "mean_bounds_basis": "duration-weighted over all left-held hours; unknown fractions remain [0,1]; not a bound between sampled epochs",
         "mean_basis": mean_basis,
         "longest_blocked_hours": longest_blocked,
         "longest_basis": longest_basis,
