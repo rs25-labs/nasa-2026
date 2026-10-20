@@ -1,13 +1,55 @@
 # Lunar Mission Lab — Pi Handoff 02
 
-Status: corrections, cell/sector enclosures, and **whole-disk obstruction classification implemented and executed by Codex on 2026-10-20**, explicitly authorized by the owner. Push and merge to remote main are authorized. L03 remains incomplete: supported upper terrain bounds and useful partial/clear-sky results are pending. Prior Pi reference runs below are historical evidence, not current validation.
+Status: corrections, cell/sector enclosures, and **model-conditional whole-disk BLOCKED/FULL classification implemented and executed by Codex on 2026-10-20**, explicitly authorized by the owner. Push and merge to remote main are authorized. L03 remains incomplete: PARTIAL and bounded disk-area integration remain pending. Physical height error remains unbounded. Prior Pi reference runs below are historical evidence, not current validation.
 Batch: horizon and operating environment (one site, diagnostic only).
 Scope authority: [Lunar Mission Lab PRD](PRD-LUNAR-MISSION-LAB.md).
 Active sequence: [Implementation Plan](LML-IMPLEMENTATION-PLAN.md) Batch 02.
 Code branch: feat/lunar-environment (branched from feat/lunar-foundation).
 Prior batch: [Pi Handoff 01](LML-PI-HANDOFF-01.md) — foundation must be reviewed before relying on these environments.
 
-## Whole-disk obstruction checkpoint — 2026-10-20
+## Composite clearance checkpoint — 2026-10-20
+
+Implementation and proof contract: [Composite Model](LML-COMPOSITE-MODEL.md),
+[implementation plan](LML-COMPOSITE-IMPLEMENTATION-PLAN.md). Branch:
+`codex/lunar-composite-visibility`. Existing seven-asset invocations remain
+obstruction-only; explicitly select the optional global supplement for FULL.
+
+- Current composite reference: `data/local/lml/env-runs/20261020T192833Z-2cd591e7/`.
+  Exit 0; thirteen artifacts; 25.82 seconds; peak process memory 266.28 MiB.
+- Sun: 29 BLOCKED. Earth: 7 FULL, 22 UNKNOWN, with 36 known visible and
+  132 unknown left-held hours. Both bodies account for 168 hours. The
+  terminal sample has zero elapsed time; this is not continuous visibility.
+- Nine cached assets reused, no downloads during the diagnostic. The global
+  label/image were acquired beforehand with the separate 40-MiB budget.
+  All 16,588,800 global samples valid; observed max DN 21,371 gives a
+  **raster-model-only** maximum radius of 1,748,085.5 m.
+- All 29 clearance attempts replayed; seven FULL terminal partitions cover
+  the padded polar root and separately prove the exterior. 225–241 node
+  visits per FULL result; 249 cached nodes. The remaining 22 Earth samples
+  fail the exterior scalar-envelope test and remain UNKNOWN.
+- Focused analytic/failure checks, source hashes, fraction/duration fields,
+  unchanged polar witness evidence, thirteen nonempty artifacts and released
+  locks checked. No parameter search, generated suite, subagents or new
+  dependencies. Physical height error is unbounded; no PARTIAL results.
+- New artifacts: `composite-clearance-proofs.json` and
+  `composite-terrain-nodes.csv`. Model ID `lml-composite-cell-solid-v1`;
+  original `lml-polar-cell-solid-v1` witness provenance remains separate.
+- **Next action:** bounded projected disk-area subdivision reusing these
+  sufficient conditions. Do not start API/UI or claim L03 complete.
+
+Exact diagnostic command (from repository root; all nine assets must already
+be cached for `--offline`):
+
+```bash
+PYTHONPATH=apps/clps/api/src MPLCONFIGDIR=/private/tmp/lml-matplotlib .venv/bin/python apps/clps/scripts/prepare_environment.py --sources data/manifests/clps/foundation-sources.json --global-sources data/manifests/clps/composite-global-sources.json --max-global-download-mib 40 --work-dir data/local/lml --site-id sample-a --latitude-deg -89.54 --longitude-deg 0 --observer-height-m 2 --start 2026-11-14T09:00:00Z --days 7 --step-hours 6 --az-step-deg 2 --max-distance-m 150000 --distance-steps 256 --max-download-mib 160 --offline
+```
+
+Without `--offline`, missing allowlisted assets may be acquired within the
+separate foundation/global caps. Preserve cache integrity receipts; never
+remove a lock without confirming the owning process has stopped. No rerun
+is requested by this handoff.
+
+## Whole-disk obstruction checkpoint — 2026-10-20 (seven-asset model)
 
 Subsequent bounded source check: [Wider Terrain Assessment](LML-WIDER-TERRAIN-ASSESSMENT.md).
 Compatible global LDEM_16 metadata and size were verified, but no hard physical

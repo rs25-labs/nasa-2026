@@ -7,7 +7,8 @@ Correction pass (Codex audit):
 - Whole-disk BLOCKED requires witnessed lower bounds above the disk in
   every potentially intersected sector. Missing witnesses propagate to
   UNKNOWN; a complete horizon is not required to prove obstruction.
-  FULL/PARTIAL remain unavailable without supported upper terrain bounds.
+  Optional composite clearance proves FULL over the explicit raster model.
+  PARTIAL remains unavailable without projected-area integration.
 - Intervals use an explicit left-held sample-state interpretation over
   [t_i, t_{i+1}); the terminal boundary sample carries zero elapsed time
   and starts no zero-length interval.
@@ -95,7 +96,7 @@ def _unknown_row(row: dict, horizon, reason: str, half_width: float, footprint_c
     }
 
 
-def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bounds: list[dict] | None = None) -> list[dict]:
+def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bounds: list[dict] | None = None, clearance=None) -> list[dict]:
     """Join each geometric row with its disk footprint's horizon state.
 
     Legacy profile values remain diagnostic only. The separate sector
@@ -108,6 +109,29 @@ def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bou
         horizon = horizon_at_azimuth(profiles, row["azimuth_deg"])
         half_width = footprint_half_width_deg(row["center_elevation_deg"], row["angular_radius_deg"])
         result = classify_disk(row, sectors)
+        if clearance is not None:
+            from .composite_bounds import MODEL_ID as COMPOSITE_MODEL_ID
+            result.update(
+                witness_model_id=result['visibility_model_id'],
+                visibility_model_id=COMPOSITE_MODEL_ID,
+                clearance_proof_id='', clearance_termination='not-required-blocked',
+                clearance_visited_nodes=0,
+                visibility_basis='bounds conditional on reported geometric directions and composite raster solids; physical height error unbounded',
+            )
+            if result['state'] != 'BLOCKED':
+                proof = clearance.prove(row)
+                proof_id = f"clearance-{len(clearance.proofs)}"
+                proof.update(proof_id=proof_id, utc=row['utc'], body=row['body'],
+                             azimuth_deg=row['azimuth_deg'], center_elevation_deg=row['center_elevation_deg'],
+                             angular_radius_deg=row['angular_radius_deg'])
+                clearance.proofs.append(proof)
+                result.update(clearance_proof_id=proof_id, clearance_termination=proof['termination'],
+                              clearance_visited_nodes=proof['visited_nodes'])
+                if proof['clear']:
+                    result.update(state='FULL', state_reason='whole-disk-above-all-composite-terrain; raster-model conditional',
+                                  visible_fraction=1.0, visible_fraction_lower=1.0, visible_fraction_upper=1.0)
+                else:
+                    result['state_reason'] += '; composite-clearance:'+proof['termination']
         joined = _unknown_row(row, horizon, result['state_reason'], half_width, 0)
         joined.update(result)
         out.append(joined)
