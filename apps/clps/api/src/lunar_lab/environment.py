@@ -146,7 +146,9 @@ def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bou
                     result['fraction_width_upper'] = 0.0
                 elif result['state']=='UNKNOWN':
                     prover = TerrainTileProver([],clearance,prepared=area_prepared)
-                    area = integrate_disk(row,prover)
+                    # Diagnostic elevation proposes certificate thresholds only.
+                    # Complete outward terrain proofs still decide visibility.
+                    area = integrate_disk(dict(row,horizon_elevation_deg=horizon['horizon_elevation_deg']),prover)
                     area_id = f'disk-area-{len(clearance.area_proofs)}'
                     area.update(proof_id=area_id,utc=row['utc'],body=row['body'],
                                 azimuth_deg=row['azimuth_deg'],center_elevation_deg=row['center_elevation_deg'],

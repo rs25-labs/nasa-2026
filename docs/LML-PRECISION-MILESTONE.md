@@ -1,5 +1,8 @@
 # Measured visibility precision checkpoint
 
+Historical PR #7 reference. The follow-on checkpoint is
+[LML-HORIZON-REUSE-MILESTONE.md](LML-HORIZON-REUSE-MILESTONE.md).
+
 2026-10-20. This follows PR #6's finite-disk milestone. The owner authorized
 implementation, bounded execution and PR/merge delivery, then a stop to take
 stock. No subagents, new data, dependencies, UI, training or SPHEREx work.

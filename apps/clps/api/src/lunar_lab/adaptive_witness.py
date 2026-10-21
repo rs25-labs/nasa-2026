@@ -38,12 +38,24 @@ def certify_geometry(geometry,direction):
     horizontal=(east.square()+north.square()).sqrt()
     if lower<=up.hi or horizontal.lo<=0:return None
     B=(E*east+N*north)/horizontal
-    if not (A.lo>0 and B.lo>0 and (A.square()+B.square()).lo>k.square().hi):return None
-    return dict(state='BLOCKED',witness_kind='adaptive-cell-circle',
+    sector=None
+    if not (A.lo>0 and B.lo>0 and (A.square()+B.square()).lo>k.square().hi):
+        from .bearing_horizon import bearing_wedge
+        from .bounded_math import sin_cos_degrees
+        sector=bearing_wedge(direction)
+        if sector is None:return None
+        endpoints=[E*sin_cos_degrees(a%360)[0]+N*sin_cos_degrees(a%360)[1] for a in sector]
+        minimum=min(b.lo for b in endpoints)
+        # A positive sinusoid on a sector shorter than pi is concave;
+        # its minimum is at an endpoint, avoiding component dependency loss.
+        if not (A.lo>0 and minimum>0 and (A.square()+Interval(minimum).square()).lo>k.square().hi):return None
+    receipt=dict(state='BLOCKED',witness_kind='adaptive-cell-circle',
                 evidence_id=f'cell-circle:{row}:{col}',witness_cell_id=f'{row}:{col}',
                 row=row,col=col,raw_dn=dn,circle_x_m=str(x.lo),circle_y_m=str(y.lo),
                 circle_radius_m=str(a.lo),elevation_sine_lower_lo=str(lower),
                 direction=[[str(d.lo),str(d.hi)] for d in direction])
+    if sector is not None:receipt['bearing_sector_deg']=list(sector)
+    return receipt
 
 
 def certify_circle(clearance,direction,row,col,x,y,radius):

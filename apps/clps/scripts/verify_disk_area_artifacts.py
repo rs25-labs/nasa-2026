@@ -38,7 +38,14 @@ def verify(run):
     assert len(proof_by_id)==len(proofs)
     published=set()
     for proof in proofs:
-        if proof.get('proof_kind')=='projected-disk-region':
+        if proof.get('proof_kind')=='bearing-horizon-wedge':
+            replay=engine.prove_wedge(proof['wedge_start_deg'],proof['wedge_end_deg'],
+                                      Interval(proof['minimum_disk_up_lo']),node_budget=proof['node_budget'])
+            assert replay['sky_wedge']==proof['sky_wedge']
+            assert replay['minimum_disk_up_lo']==proof['minimum_disk_up_lo']
+            assert sin_cos_degrees(proof['proposed_elevation_deg'])[0].lo==Interval(proof['minimum_disk_up_lo']).lo
+            engine.sky_cache.remember(dict(replay,proof_id=proof['proof_id']))
+        elif proof.get('proof_kind')=='projected-disk-region':
             d=tuple(Interval(a,b) for a,b in proof['region_direction'])
             replay=engine.prove_region(d,node_budget=proof['node_budget'],minimum_span=proof.get('minimum_polar_span',1),
                                       use_cache='cache_policy' in proof,legacy_wedge=proof.get('region_wedge_policy','legacy-v1')=='legacy-v1')
@@ -53,12 +60,30 @@ def verify(run):
             replay=engine.prove(proof,node_budget=proof['node_budget'],minimum_span=proof.get('minimum_polar_span',1))
         assert replay['clear']==proof['clear'] and replay['termination']==proof['termination']
         assert replay['terminal_nodes']==proof['terminal_nodes']
+        assert replay['visited_nodes']==proof['visited_nodes']
         published.add(proof['proof_id'])
     cells={r['cell_id']:r for r in table('terrain-cell-enclosures.csv')}
     witnesses={}
     east,north,up=basis(report['site_sample']['latitude_deg'],report['site_sample']['longitude_deg'])
     areas=json.loads((run/'projected-disk-area-proofs.json').read_text())
     for area in areas:
+        prep=area.get('horizon_preparation')
+        if prep:
+            assert prep['visited_nodes']<=area['terrain_visited_nodes']<=area['terrain_node_budget']<=32768
+            assert prep['node_budget']<=min(8192,area['terrain_node_budget']//2)
+            attempts=[proof_by_id[p] for p in prep['attempts']]
+            assert len(attempts)<=64 and len(set(prep['attempts']))==len(attempts)
+            assert all(p['proof_kind']=='bearing-horizon-wedge' and p['node_budget']<=512 for p in attempts)
+            assert sum(p['visited_nodes'] for p in attempts)==prep['visited_nodes']<=prep['node_budget']<=8192
+            if 'bearing_bins' in prep:
+                certified={int(round(p['wedge_start_deg']*8)) for p in attempts if p['clear']}
+                assert certified==set(prep['certified_bins'])
+                assert prep['coverage_complete']==(bool(prep['bearing_bins']) and set(prep['bearing_bins'])==certified)
+            if prep['fallback_policy']=='certificates-only':
+                if 'bearing_bins' in prep:assert prep['coverage_complete']
+                assert any(p['clear'] for p in attempts)
+                assert area['terrain_visited_nodes']==prep['visited_nodes']
+            else:assert prep['fallback_policy']=='bounded-region-traversal'
         leaves={t['tile_id']:t for t in area['tiles']}
         assert len(leaves)==len(area['tiles'])
         def partition(prefix,box):

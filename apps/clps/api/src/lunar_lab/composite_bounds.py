@@ -204,6 +204,26 @@ class CompositeClearance:
             maxima.append(sin_cos_degrees(theta)[0].hi)
         self.band_sine_upper = max(maxima)
 
+    def prove_wedge(self,start,end,sine,*,node_budget=512):
+        """Prove every composite solid below a fixed meridian threshold."""
+        from .bearing_horizon import wedge_normals
+        local=wedge_normals(start,end)
+        if not isinstance(node_budget,int) or node_budget<0:
+            raise ValueError('Invalid wedge node budget')
+        sine=Interval(sine.lo)
+        if not -1<sine.lo<1:raise ValueError('Invalid wedge elevation sine')
+        result=dict(clear=False,model_id=MODEL_ID,node_budget=node_budget,visited_nodes=0,
+                    cache_budget=self.cache_budget,termination='',terminal_nodes=[],unresolved_node='',
+                    minimum_disk_up_lo=str(sine.lo),minimum_polar_span=MINIMUM_SPAN,
+                    wedge_start_deg=start,wedge_end_deg=end,
+                    sky_wedge=[[str(a.lo),str(a.hi),str(b.lo),str(b.hi)] for a,b,_ in local])
+        self._prepare_bands()
+        if self.band_sine_upper is None or sine.lo<=self.band_sine_upper:
+            result['termination']='exterior-band-envelope-unresolved'
+            return result
+        normals=[tuple(a*e+b*n for e,n in zip(self.east,self.north)) for a,b,_ in local]
+        return self._walk(result,normals,sine,(1-sine.square()).nonnegative().sqrt(),node_budget)
+
     def prove_region(self, direction, *, node_budget=512,minimum_span=MINIMUM_SPAN,use_cache=True,legacy_wedge=False):
         """Enclose clearance of unit directions in a local E/N/up box."""
         from .bounded_math import dot
