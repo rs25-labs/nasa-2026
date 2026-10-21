@@ -27,7 +27,10 @@ Follow-on [finite-disk milestone](LML-VISIBILITY-MILESTONE.md) adds bounded
 area integration and a real PARTIAL result. Original sample-a now has Sun
 29 BLOCKED; Earth 9 FULL / 20 UNKNOWN. The follow-on
 [precision checkpoint](LML-PRECISION-MILESTONE.md) narrows the fixed Sun
-transition without changing the terrain model or work limits. Precision and
+transition without changing the terrain model or work limits. The next
+[bearing-certificate milestone](LML-HORIZON-REUSE-MILESTONE.md) reduces the
+fixed transition width and one-day runtime, with remaining tradeoffs recorded.
+Precision and
 performance acceptance remain pending; Batch 02/L03 readiness is incomplete. The
 owner's continuation instructions authorize bounded Codex execution and
 PR/merge delivery, superseding the older execution assignment above for

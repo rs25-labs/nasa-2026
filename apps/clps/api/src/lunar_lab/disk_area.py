@@ -6,7 +6,7 @@ import math
 
 from .bounded_math import Interval, PI, dot, sin_cos_degrees
 
-INTEGRATOR_ID = 'lml-projected-disk-bounds-v2'
+INTEGRATOR_ID = 'lml-projected-disk-bounds-v3'
 TILE_BUDGET = 16384
 CLASSIFICATION_BUDGET = 4096
 MAX_DEPTH = 10
@@ -51,6 +51,7 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
     if not isinstance(classification_budget,int) or classification_budget<0:
         raise ValueError('Invalid region classification budget')
     frame = disk_basis(row)
+    preparation=prover.prepare(row) if tile_budget and classification_budget and hasattr(prover,'prepare') else None
     heap = [(-4.,'',(-1.,1.,-1.,1.),None)]
     terminals,visible,blocked = [],Interval(0),Interval(0)
     region_receipts = {}
@@ -131,6 +132,8 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
         if not heap and termination!='fraction-width-target':
             termination = '+'.join(sorted(limits)) or 'subdivision-exhausted'
     return dict(state=state,visible_fraction=scalar,visible_fraction_lower=lower,visible_fraction_upper=upper,
+                horizon_preparation=preparation,terrain_node_budget=getattr(prover,'initial_budget',None),
+                terrain_visited_nodes=(prover.initial_budget-prover.remaining) if hasattr(prover,'initial_budget') else None,
                 fraction_width_upper=0. if upper==lower else math.nextafter(upper-lower,math.inf),integrator_id=INTEGRATOR_ID,
                 tile_budget=tile_budget,max_depth=max_depth,tolerance=tolerance,visited_tiles=visited,
                 termination=termination,limits_reached=sorted(limits),classified_regions=classified,classification_budget=classification_budget,proven_visible_area_lo=str(visible.lo),
@@ -144,6 +147,7 @@ class TerrainTileProver:
         self.clearance = clearance
         self.remaining = terrain_node_budget
         self.initial_budget = terrain_node_budget
+        self.has_horizon_bank=False
         self.witnesses = []
         if prepared is not None:
             self.witnesses,self.approx = prepared.witnesses,prepared.approx
@@ -171,9 +175,25 @@ class TerrainTileProver:
                                  w[6].midpoint_float(),w[3].midpoint_float()] for w in self.witnesses])
         self.outer_array=np.array([w[:5] for w in self.outer_candidates])
 
+    def prepare(self,row):
+        from .bearing_horizon import prepare_horizon
+        preparation=prepare_horizon(self,row)
+        self.has_horizon_bank=preparation['coverage_complete']
+        preparation['fallback_policy']='certificates-only' if self.has_horizon_bank else 'bounded-region-traversal'
+        return preparation
+
+    def _clear_receipt(self,proof,tile_id):
+        proof_id=f'region-clearance-{len(self.clearance.proofs)}'
+        proof.update(proof_id=proof_id,tile_id=tile_id,proof_kind='projected-disk-region')
+        self.clearance.proofs.append(proof)
+        self.clearance.sky_cache.remember(proof)
+        return dict(state='FULL',evidence_id=proof_id,clearance_proof_id=proof_id)
+
     def classify(self,direction,tile_id):
         import numpy as np
         from .terrain_bounds import trig
+        if self.clearance.sky_cache.lookup(direction) is not None:
+            return self._clear_receipt(self.clearance.prove_region(direction,node_budget=0),tile_id)
         east,north,up = direction
         horizontal = (east.square()+north.square()).sqrt()
         if self.witnesses and horizontal.lo > 0:
@@ -202,14 +222,12 @@ class TerrainTileProver:
                 row,col=map(int,self.outer_candidates[index][5].split(':'))
                 blocked=propose_witness(self.clearance,direction,f'{row}:{row+1}:{col}:{col+1}',self.adaptive_cache)
                 if blocked is not None:return blocked
+        if self.has_horizon_bank:
+            return dict(state='UNKNOWN',evidence_id='bearing-bank-unresolved')
         proof = self.clearance.prove_region(direction,node_budget=min(512,max(0,self.remaining)))
         self.remaining -= proof['visited_nodes']
         if proof['clear']:
-            proof_id = f'region-clearance-{len(self.clearance.proofs)}'
-            proof.update(proof_id=proof_id,tile_id=tile_id,proof_kind='projected-disk-region')
-            self.clearance.proofs.append(proof)
-            self.clearance.sky_cache.remember(proof)
-            return dict(state='FULL',evidence_id=proof_id,clearance_proof_id=proof_id)
+            return self._clear_receipt(proof,tile_id)
         blocked=propose_witness(self.clearance,direction,proof.get('unresolved_node'),self.adaptive_cache)
         if blocked is not None:return blocked
         return dict(state='UNKNOWN',evidence_id=proof['termination'])
