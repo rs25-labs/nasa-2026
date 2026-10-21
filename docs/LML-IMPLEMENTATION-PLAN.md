@@ -5,6 +5,23 @@ The owner authorized starting Lunar Mission Lab. This replaces the earlier CLPS-
 
 Execution: Codex generates code; Pi runs it; owner reviews/handles testing. No Codex application execution, subagents, or extensive generated test suite.
 
+## Current owner decision — build the app
+
+The owner retires the 1-point precision target as an app/release blocker and
+directs work toward the usable application. No more numerical refinement.
+V8's measured width is 1.0344 percentage points; display its real bounds and
+UNKNOWN states. Earlier precision gates below are historical, not current work.
+
+The [first planner app slice](LML-PLANNER-APP-PLAN.md) now has source for a local
+background-job API and browser UI: site/date input, calculations, saved results,
+intervals, sample bounds and exports. Pi launches and verifies it using the
+[app handoff](LML-PLANNER-PI-HANDOFF.md). No database or new runtime dependency.
+Pi has now verified the main app flow, evidence replay, exports and cache reuse;
+the app was left running. Pi also verified both corrections (cancel and invisible
+submission errors) on `28387ec`. The [first planner milestone](LML-PLANNER-MILESTONE.md)
+is verified. Stop here for the owner's app stocktake; the next
+recommended slice is terrain map and synchronized sky/timeline interaction.
+
 ## Batch 01 — Data foundation (current handoff)
 
 - [x] Define explicit terrain/frame conventions and seven bounded asset sources.
@@ -39,11 +56,16 @@ with explicit refresh and index rebuild. Pi reports all four bounded handoff
 checks passed; the owner supplied that report and authorized committing this
 milestone. The current working agreement assigns execution to Pi;
 the historical execution authorization below describes prior checkpoints.
-Precision and
-performance acceptance remain pending; Batch 02/L03 readiness is incomplete. The
-owner's continuation instructions authorize bounded Codex execution and
-PR/merge delivery, superseding the older execution assignment above for
-these checkpoints. No API/UI, training or SPHEREx work is included.
+Precision and performance acceptance remain pending; Batch 02/L03 readiness is
+incomplete. The owner now authorizes the remaining Lunar backend milestones
+before UI work; see [backend readiness](LML-BACKEND-READINESS.md). The immediate
+batch is the owner-approved [two-stage precision handoff](LML-TWO-STAGE-PI-HANDOFF.md).
+Pi measured unchanged bounds for v5; v6 narrowed the width to 1.39 percentage
+points and v7 to 1.0593, but both failed the 1-point acceptance target. The
+third-candidate stop led to a work-policy review; v8 now preserves the first
+partition and allocates an explicit second-pass allowance. Pi acceptance remains pending.
+Historical execution exceptions do not override the current Pi execution
+assignment. No new SPHEREx or UI implementation is included in this batch.
 
 ## Batch 03 — Planner workflow
 

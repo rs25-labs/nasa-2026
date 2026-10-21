@@ -353,13 +353,18 @@ def main(argv: list[str] | None = None) -> int:
                     for reason in sorted({p['termination'] for p in clearance.proofs})
                 }
                 report['disk_area_integration'] = {
-                    'integrator_id': 'lml-projected-disk-bounds-v4',
+                    'integrator_id': 'lml-projected-disk-bounds-v8',
+                    'refinement_policy':'unresolved-second-pass-v1',
                     'proof_artifact': 'projected-disk-area-proofs.json',
-                    'normalization': 'uniform projected area of unit image disk; circle-edge squares left uncertain',
+                    'normalization': 'uniform projected area of unit image disk; clipped areas bounded by concave-strip lower sums',
+                    'circle_area_policy':'concave-strip-lower-v1','circle_area_strip_budget_per_sample':65536,
                     'samples_subdivided':len(clearance.area_proofs),
-                    'requested_fraction_width':.01,'tile_budget_per_sample':16384,
-                    'region_classification_budget_per_sample':4096,
-                    'terrain_node_budget_per_sample':32768,'maximum_tile_depth':10,
+                    'requested_fraction_width':.01,'tile_budget_per_sample':24576,
+                    'region_classification_budget_per_sample':6144,
+                    'evidence_reuse_budget_per_sample':6144,
+                    'terrain_node_budget_per_sample':40960,'maximum_tile_depth':12,
+                    'initial_pass_limits':dict(tiles=16384,classifications=4096,reuse_checks=4096,terrain_nodes=32768,depth=10),
+                    'additional_pass_limits':dict(tiles=8192,classifications=2048,reuse_checks=2048,terrain_nodes=8192,depth=12),
                     'termination_counts':{reason:sum(p['termination']==reason for p in clearance.area_proofs)
                                           for reason in sorted({p['termination'] for p in clearance.area_proofs})},
                     'actual_widths':[p['fraction_width_upper'] for p in clearance.area_proofs],

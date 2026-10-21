@@ -1,0 +1,172 @@
+"use strict";
+const $ = id => document.getElementById(id);
+const form = $("mission-form");
+let activeJob = null, lastJob = null, pollTimer = null, resultRequest = 0;
+const states = new Set(["FULL", "PARTIAL", "BLOCKED", "UNKNOWN"]);
+
+function el(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+function error(message = "") { $("error").textContent = message; $("error").hidden = !message; }
+function submissionError(message) {
+  error(message);
+  $("job-panel").hidden = false;
+  $("job-title").textContent = "Unable to start calculation";
+  $("job-text").textContent = message;
+  $("cancel").hidden = true; $("retry").hidden = true;
+  $("calculate").disabled = false;
+}
+async function api(path, data) {
+  const response = await fetch(path, data === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
+  });
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.error || `Request failed (${response.status}).`);
+  return value;
+}
+function pct(value) {
+  if (value === "" || value === null || value === undefined || !Number.isFinite(Number(value))) return "Unresolved";
+  return `${(100 * Number(value)).toFixed(1)}%`;
+}
+function bounds(lower, upper) {
+  if (lower === "" || upper === "" || lower === undefined || upper === undefined) return "Unresolved";
+  return Number(lower) === Number(upper) ? pct(lower) : `${pct(lower)}–${pct(upper)}`;
+}
+function hours(value) { return value === "" || value === null || value === undefined ? "Unresolved" : `${Number(value).toFixed(1)} h`; }
+function utc(value) { return value.replace("T", " ").replace("+00:00", "Z"); }
+function moveMarker() {
+  const lat = Number(form.elements.latitude_deg.value), lon = Number(form.elements.longitude_deg.value);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+  const radius = Math.max(0, Math.min(112, (lat + 90) / 5 * 112)), angle = lon * Math.PI / 180;
+  for (const id of ["site-dot", "site-halo"]) {
+    $(id).setAttribute("cx", String(160 + radius * Math.sin(angle)));
+    $(id).setAttribute("cy", String(140 - radius * Math.cos(angle)));
+  }
+}
+form.addEventListener("input", moveMarker);
+$("map").addEventListener("click", event => {
+  const point = $("map").createSVGPoint(); point.x = event.clientX; point.y = event.clientY;
+  const local = point.matrixTransform($("map").getScreenCTM().inverse());
+  const dx = local.x - 160, dy = local.y - 140, radius = Math.hypot(dx, dy);
+  if (radius > 112) return;
+  form.elements.latitude_deg.value = (-90 + radius / 112 * 5).toFixed(4);
+  form.elements.longitude_deg.value = (Math.atan2(dx, -dy) * 180 / Math.PI).toFixed(4);
+  moveMarker();
+});
+
+function renderResult(result) {
+  $("empty").hidden = true; $("results").hidden = false;
+  $("result-title").textContent = result.request.site_id || "Mission environment";
+  $("result-meta").textContent = `${result.request.latitude_deg}° latitude · ${result.request.longitude_deg}° longitude · ${utc(result.request.start_utc)} → ${utc(result.request.end_utc)}`;
+  $("run-id").textContent = `Run ${result.run_id} · calculation ${Number(result.calculation_seconds).toFixed(1)} s · ${result.cache_key}`;
+  $("summary").replaceChildren(); $("timeline").replaceChildren(); $("samples").replaceChildren(); $("exports").replaceChildren();
+  for (const summary of result.summaries) {
+    const name = summary.body === "SUN" ? "Sunlight" : "Earth-disk visibility";
+    const card = el("div", undefined, "metric");
+    card.append(el("div", name, "metric-label"), el("div", bounds(summary.mean_visible_fraction_lower, summary.mean_visible_fraction_upper), "metric-value"),
+      el("p", "Duration-weighted visible-disk range", "caption"),
+      el("p", `${hours(summary.full_hours)} full · ${hours(summary.partial_hours)} partial · ${hours(summary.unknown_hours)} unknown`, "caption"),
+      el("p", `Longest known blocked interval: ${hours(summary.longest_blocked_hours)}`, "caption"),
+      el("p", summary.longest_basis || "", "caption"));
+    $("summary").append(card);
+    const row = el("div", undefined, "timeline-row"), label = el("div", undefined, "timeline-label");
+    label.append(el("span", name), el("span", `${hours(summary.total_hours)} total`));
+    const track = el("div", undefined, "track");
+    track.setAttribute("role", "img"); track.setAttribute("aria-label", `${name} sampled intervals; details in the sample table`);
+    const intervals = result.intervals.filter(i => i.body === summary.body);
+    for (const interval of intervals) {
+      const state = states.has(interval.state) ? interval.state : "UNKNOWN";
+      const segment = el("span", undefined, `interval ${state}`);
+      segment.style.width = `${Number(interval.duration_hours) / Number(summary.total_hours) * 100}%`;
+      segment.title = `${state}: ${utc(interval.start_utc)} → ${utc(interval.end_utc)} (${hours(interval.duration_hours)})`;
+      track.append(segment);
+    }
+    row.append(label, track);
+    if (intervals.length) row.append(el("p", `${utc(intervals[0].start_utc)} → ${utc(intervals[intervals.length - 1].end_utc)}`, "caption"));
+    $("timeline").append(row);
+  }
+  for (const sample of result.samples) {
+    const row = el("tr"), state = states.has(sample.state) ? sample.state : "UNKNOWN";
+    const stateCell = el("td"); stateCell.append(el("span", state, `state ${state}`));
+    row.append(el("td", utc(sample.utc)), el("td", sample.body), stateCell,
+      el("td", bounds(sample.visible_fraction_lower, sample.visible_fraction_upper)));
+    $("samples").append(row);
+  }
+  for (const [name, label] of [["environment-timeseries.csv", "Samples CSV"], ["environment-intervals.csv", "Intervals CSV"], ["environment-summaries.csv", "Summary CSV"], ["environment-report.json", "Evidence report JSON"]]) {
+    const link = el("a", label); link.href = `/api/results/${result.cache_key}/${name}`; link.download = name;
+    $("exports").append(link);
+  }
+}
+async function openResult(key) {
+  const request = ++resultRequest;
+  try {
+    error(); const result = await api(`/api/results/${key}`);
+    if (request === resultRequest) renderResult(result);
+  } catch (reason) { if (request === resultRequest) error(reason.message); }
+}
+async function refreshSaved() {
+  try {
+    const items = await api("/api/saved"); $("saved-list").replaceChildren();
+    if (!items.length) $("saved-list").append(el("p", "Your completed calculations will appear here.", "caption"));
+    for (const item of items) {
+      const row = el("div", undefined, "saved-item"), button = el("button", "Open result ↗");
+      button.type = "button"; button.setAttribute("aria-label", `Open saved run ${item.run_id}`);
+      button.addEventListener("click", () => openResult(item.cache_key));
+      const label = item.request?.site_id ? `${item.request.site_id} · ${utc(item.request.start_utc || item.run_id)}` : item.run_id;
+      row.append(el("span", label), button); $("saved-list").append(row);
+    }
+  } catch (reason) { $("saved-list").replaceChildren(el("p", reason.message, "caption")); }
+}
+async function trackJob(job) {
+  clearTimeout(pollTimer); activeJob = job.id; lastJob = job; $("job-panel").hidden = false;
+  const running = ["queued", "running", "cancelling"].includes(job.state);
+  $("calculate").disabled = running; $("cancel").hidden = !running;
+  $("cancel").disabled = job.state === "cancelling";
+  $("retry").hidden = running || job.state === "complete";
+  $("job-title").textContent = { queued: "Calculation queued", running: "Calculating your environment", cancelling: "Stopping calculation", complete: job.cache_hit ? "Loaded matching saved result" : "Environment ready", cancelled: "Calculation cancelled", interrupted: "Previous calculation interrupted", failed: "Calculation could not finish" }[job.state] || job.state;
+  $("job-text").textContent = running ? `${Math.floor(job.elapsed_seconds || 0)} s elapsed · The page remains usable. No completion percentage is estimated.` : `${Math.floor(job.elapsed_seconds || 0)} s elapsed`;
+  if (job.notice) $("job-text").textContent += ` · ${job.notice}`;
+  if (job.state === "complete") { activeJob = null; await openResult(job.cache_key); await refreshSaved(); }
+  else if (!running) { activeJob = null; if (job.error) error(job.error); }
+  else pollTimer = setTimeout(async () => {
+    try { await trackJob(await api(`/api/jobs/${job.id}`)); }
+    catch (reason) { error(`${reason.message} Reload the page to reconnect to the job.`); $("calculate").disabled = false; }
+  }, 1500);
+}
+form.addEventListener("submit", async event => {
+  event.preventDefault(); error();
+  if (!form.checkValidity()) {
+    const invalid = form.querySelector(":invalid");
+    submissionError(invalid?.validationMessage || "Check the mission inputs.");
+    invalid?.focus();
+    return;
+  }
+  $("calculate").disabled = true;
+  const data = Object.fromEntries(new FormData(form));
+  for (const key of ["latitude_deg", "longitude_deg", "observer_height_m", "days"]) data[key] = Number(data[key]);
+  data.start += "Z";
+  try { await trackJob(await api("/api/jobs", data)); }
+  catch (reason) { submissionError(reason.message); }
+});
+$("cancel").addEventListener("click", async () => {
+  if (!activeJob) return;
+  try { await trackJob(await api(`/api/jobs/${activeJob}/cancel`, {})); }
+  catch (reason) { error(reason.message); }
+});
+$("retry").addEventListener("click", () => {
+  if (!lastJob?.request) return;
+  for (const [key, value] of Object.entries(lastJob.request)) {
+    form.elements[key].value = key === "start" ? new Date(value).toISOString().slice(0, 16) : value;
+  }
+  moveMarker(); form.requestSubmit();
+});
+$("refresh").addEventListener("click", refreshSaved);
+moveMarker(); refreshSaved();
+api("/api/jobs").then(jobs => {
+  const active = jobs.find(job => ["queued", "running", "cancelling"].includes(job.state));
+  if (active) trackJob(active);
+  else if (jobs[0]?.state === "interrupted") trackJob(jobs[0]);
+}).catch(reason => error(reason.message));

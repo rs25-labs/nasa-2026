@@ -5,10 +5,12 @@ import heapq
 import math
 
 from .bounded_math import Interval, PI, dot, sin_cos_degrees
+from .circle_area import clipped_area_lower,STRIPS_PER_TILE,STRIP_BUDGET
 
-INTEGRATOR_ID = 'lml-projected-disk-bounds-v4'
+INTEGRATOR_ID = 'lml-projected-disk-bounds-v8'
 TILE_BUDGET = 16384
 CLASSIFICATION_BUDGET = 4096
+REUSE_BUDGET = 4096
 MAX_DEPTH = 10
 TOLERANCE = 0.01
 
@@ -43,22 +45,75 @@ def _fraction(visible,blocked):
     return lower,upper
 
 
-def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tolerance=TOLERANCE,classification_budget=CLASSIFICATION_BUDGET):
+def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tolerance=TOLERANCE,classification_budget=CLASSIFICATION_BUDGET,reuse_budget=REUSE_BUDGET,_resume=None,_reuse_first=False):
+    """One bounded pass; the private seed is used only by disk_refinement.
+
+    Continuation requires the same live prover. Arbitrary persisted checkpoints
+    are not an input interface: their provenance/terrain would need validation.
+    """
     if not isinstance(tile_budget,int) or tile_budget < 0 or not isinstance(max_depth,int) or not 0 <= max_depth <= 16:
         raise ValueError('Invalid disk subdivision work limits')
     if not math.isfinite(tolerance) or not 0 < tolerance < 1:
         raise ValueError('Invalid disk fraction tolerance')
     if not isinstance(classification_budget,int) or classification_budget<0:
         raise ValueError('Invalid region classification budget')
+    if not isinstance(reuse_budget,int) or reuse_budget<0:
+        raise ValueError('Invalid evidence reuse budget')
     frame = disk_basis(row)
-    preparation=prover.prepare(row) if tile_budget and classification_budget and hasattr(prover,'prepare') else None
-    heap = [(-4.,'',(-1.,1.,-1.,1.),None)]
-    terminals,visible,blocked = [],Interval(0),Interval(0)
-    region_receipts = {}
+    geometry={key:float(row[key]) for key in ('azimuth_deg','center_elevation_deg','angular_radius_deg')}
+    if _resume is not None:
+        if _resume['disk_geometry']!=geometry or max_depth<_resume['max_depth']:
+            raise ValueError('Continuation geometry/depth mismatch')
+        preparation=_resume['horizon_preparation']
+        terminals=[t for t in _resume['tiles'] if t['state']!='UNKNOWN']
+        visible=Interval(_resume['proven_visible_area_lo'])
+        blocked=Interval(_resume['proven_blocked_area_lo'])
+        region_receipts=dict(_resume['region_receipts'])
+        heap=[]
+        for tile in _resume['tiles']:
+            if tile['state']!='UNKNOWN':continue
+            inherited=tile.get('evidence')
+            if inherited is not None and inherited.get('state') not in ('FULL','BLOCKED'):inherited=None
+            heap.append((-tile['area_square'],tile['tile_id'],tuple(tile['box']),inherited))
+        heapq.heapify(heap)
+    else:
+        preparation=prover.prepare(row) if tile_budget and classification_budget and hasattr(prover,'prepare') else None
+        heap = [(-4.,'',(-1.,1.,-1.,1.),None)]
+        terminals,visible,blocked = [],Interval(0),Interval(0)
+        region_receipts = {}
     visited,termination = 0,'tile-budget'
     classified = 0
+    reused = 0
+    reuse_tiles=[]
     limits=set()
     whole_state = None
+    circle_strips=_resume['circle_area_strips_used'] if _resume is not None else 0
+    def reuse(direction,tile_id):
+        nonlocal reused
+        before=getattr(prover,'remaining',None)
+        evidence=prover.classify_reuse(direction,tile_id)
+        if before is not None and prover.remaining!=before:
+            raise ValueError('Evidence reuse spent terrain work')
+        reused+=1;reuse_tiles.append(tile_id)
+        return dict(evidence,reuse_only=True)
+    def credit(receipt,evidence,inside):
+        nonlocal visible,blocked,circle_strips
+        if inside:
+            amount=Interval(receipt['area_square'])
+            receipt.update(criterion='inside-disk-square')
+        elif circle_strips+STRIPS_PER_TILE<=STRIP_BUDGET:
+            amount=Interval(clipped_area_lower(receipt['box']))
+            circle_strips+=STRIPS_PER_TILE
+            receipt.update(criterion='disk-clipped-area-lower-bound',
+                           clipped_area_lower=str(amount.lo),area_strips=STRIPS_PER_TILE)
+        else:
+            limits.add('circle-area-strip-budget')
+            return False
+        if evidence['state']=='FULL':visible=visible+amount
+        else:blocked=blocked+amount
+        receipt.update(state=evidence['state'],evidence=evidence)
+        terminals.append(receipt)
+        return True
     while heap and visited < tile_budget:
         _,tile_id,box,inherited = heapq.heappop(heap)
         visited += 1
@@ -73,14 +128,24 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
         inside = radial.hi <= 1
         evidence = inherited
         if evidence is None:
-            if classified>=classification_budget:
+            direction=direction_box(frame,box)
+            can_reuse=reused<reuse_budget and hasattr(prover,'classify_reuse')
+            if _reuse_first and can_reuse:
+                evidence=reuse(direction,tile_id)
+                if evidence['state']=='UNKNOWN' and classified<classification_budget:
+                    evidence=prover.classify(direction,tile_id);classified+=1
+                elif evidence['state']=='UNKNOWN':limits.add('region-classification-budget')
+            elif classified>=classification_budget:
                 limits.add('region-classification-budget')
-                receipt.update(state='UNKNOWN',criterion='region-classification-budget')
-                terminals.append(receipt)
-                continue
-            direction = direction_box(frame,box)
-            evidence = prover.classify(direction,tile_id)
-            classified += 1
+                if not can_reuse:
+                    if reused>=reuse_budget:limits.add('evidence-reuse-budget')
+                    receipt.update(state='UNKNOWN',criterion='region-classification-budget')
+                    terminals.append(receipt)
+                    continue
+                evidence=reuse(direction,tile_id)
+            else:
+                evidence = prover.classify(direction,tile_id)
+                classified += 1
             if evidence['state'] not in ('FULL','BLOCKED','UNKNOWN'):
                 raise ValueError('Invalid tile proof state')
             if evidence['state']!='UNKNOWN':
@@ -94,13 +159,8 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
             terminals.append(receipt)
             termination = 'whole-disk-region-proof'
             break
-        if inside and state in ('FULL','BLOCKED'):
-            if state == 'FULL':
-                visible = visible+area
-            else:
-                blocked = blocked+area
-            receipt.update(state=state,criterion='inside-disk-square',evidence=evidence)
-            terminals.append(receipt)
+        if state in ('FULL','BLOCKED') and credit(receipt,evidence,inside):
+            pass
         elif len(tile_id) >= max_depth:
             limits.add('depth-limit')
             receipt.update(state='UNKNOWN',criterion='depth-limit-or-circle-edge',evidence=evidence)
@@ -124,20 +184,38 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
     else:
         for _,tile_id,box,inherited in heap:
             x0,x1,y0,y1 = box
-            terminals.append(dict(tile_id=tile_id,box=list(box),area_square=(x1-x0)*(y1-y0),
-                                  state='UNKNOWN',criterion='unprocessed',evidence=inherited))
+            receipt=dict(tile_id=tile_id,box=list(box),area_square=(x1-x0)*(y1-y0))
+            radial=Interval(x0,x1).square()+Interval(y0,y1).square()
+            if radial.lo>1:
+                receipt.update(state='OUTSIDE',criterion='square-outside-unit-disk')
+            elif inherited is not None and inherited['state'] in ('FULL','BLOCKED'):
+                if credit(receipt,inherited,radial.hi<=1):continue
+                receipt.update(state='UNKNOWN',criterion='unprocessed',evidence=inherited)
+            else:
+                receipt.update(state='UNKNOWN',criterion='unprocessed',evidence=inherited)
+            terminals.append(receipt)
         lower,upper = _fraction(visible,blocked)
         state = 'PARTIAL' if visible.lo>0 and blocked.lo>0 else 'UNKNOWN'
         scalar = ''
         if not heap and termination!='fraction-width-target':
             termination = '+'.join(sorted(limits)) or 'subdivision-exhausted'
+    previous=_resume or {}
     return dict(state=state,visible_fraction=scalar,visible_fraction_lower=lower,visible_fraction_upper=upper,
+                disk_geometry=geometry,pass_kind='refined' if _resume is not None else 'initial',
                 adaptive_bearing_refinement=getattr(prover,'adaptive_refinement',None),
                 horizon_preparation=preparation,terrain_node_budget=getattr(prover,'initial_budget',None),
+                circle_area_policy='concave-strip-lower-v1',circle_area_strips_used=circle_strips,
+                circle_area_strip_budget=STRIP_BUDGET,
+                reuse_only_regions=reused+previous.get('reuse_only_regions',0),
+                reuse_budget=reuse_budget+previous.get('reuse_budget',0),
+                reuse_only_tiles=previous.get('reuse_only_tiles',[])+reuse_tiles,
                 terrain_visited_nodes=(prover.initial_budget-prover.remaining) if hasattr(prover,'initial_budget') else None,
                 fraction_width_upper=0. if upper==lower else math.nextafter(upper-lower,math.inf),integrator_id=INTEGRATOR_ID,
-                tile_budget=tile_budget,max_depth=max_depth,tolerance=tolerance,visited_tiles=visited,
-                termination=termination,limits_reached=sorted(limits),classified_regions=classified,classification_budget=classification_budget,proven_visible_area_lo=str(visible.lo),
+                tile_budget=tile_budget+previous.get('tile_budget',0),max_depth=max_depth,tolerance=tolerance,
+                visited_tiles=visited+previous.get('visited_tiles',0),
+                termination=termination,limits_reached=sorted(limits),
+                classified_regions=classified+previous.get('classified_regions',0),
+                classification_budget=classification_budget+previous.get('classification_budget',0),proven_visible_area_lo=str(visible.lo),
                 proven_blocked_area_lo=str(blocked.lo),tiles=terminals,region_receipts=region_receipts)
 
 
@@ -149,6 +227,7 @@ class TerrainTileProver:
         self.remaining = terrain_node_budget
         self.initial_budget = terrain_node_budget
         self.has_horizon_bank=False
+        self.reuse_witnesses=None
         self.adaptive_refinement=dict(policy='witness-gated-dyadic-v1',attempt_limit=128,attempts=[],visited_nodes=0)
         self.witnesses = []
         if prepared is not None:
@@ -192,6 +271,13 @@ class TerrainTileProver:
         return dict(state='FULL',evidence_id=proof_id,clearance_proof_id=proof_id)
 
     def classify(self,direction,tile_id):
+        return self._classify(direction,tile_id,reuse_only=False)
+
+    def classify_reuse(self,direction,tile_id):
+        """Check published sky proofs / preconstructed circles, with no traversal."""
+        return self._classify(direction,tile_id,reuse_only=True)
+
+    def _classify(self,direction,tile_id,*,reuse_only):
         import numpy as np
         from .terrain_bounds import trig
         if self.clearance.sky_cache.lookup(direction) is not None or self.clearance.sky_cache.lookup_union(direction) is not None:
@@ -213,6 +299,23 @@ class TerrainTileProver:
                 if a.lo>0 and b.lo>0 and (a.square()+b.square()).lo>threshold.square().hi:
                     return dict(state='BLOCKED',evidence_id='polar-inner-cap:'+cell,witness_cell_id=cell,
                                 elevation_lower_deg=lower,direction=[[str(d.lo),str(d.hi)] for d in direction])
+        if reuse_only:
+            from .adaptive_witness import certify_geometry
+            if self.reuse_witnesses is None:
+                self.reuse_witnesses=tuple(g for g in self.adaptive_cache.values() if g is not None)
+                self.reuse_approx=np.array([[float(g['lower']),g['A'].midpoint_float(),
+                    g['E'].midpoint_float(),g['N'].midpoint_float(),g['k'].midpoint_float()]
+                    for g in self.reuse_witnesses])
+            if self.reuse_witnesses and horizontal.lo>0:
+                az=math.atan2(east.midpoint_float(),north.midpoint_float())
+                lower,A,E,N,k=self.reuse_approx.T
+                B=E*math.sin(az)+N*math.cos(az)
+                candidates=np.flatnonzero((lower>float(up.hi))&(A>0)&(B>0)&(A*A+B*B>k*k))
+                candidates=sorted(candidates,key=lambda i:self.reuse_witnesses[i]['lower'],reverse=True)[:16]
+                for index in candidates:
+                    blocked=certify_geometry(self.reuse_witnesses[index],direction)
+                    if blocked is not None:return blocked
+            return dict(state='UNKNOWN',evidence_id='existing-evidence-unresolved')
         from .adaptive_witness import propose_witness,certify_circle
         floor_witness=None
         floor=None
