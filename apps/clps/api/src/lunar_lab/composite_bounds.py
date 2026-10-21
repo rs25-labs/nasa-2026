@@ -224,7 +224,7 @@ class CompositeClearance:
         normals=[tuple(a*e+b*n for e,n in zip(self.east,self.north)) for a,b,_ in local]
         return self._walk(result,normals,sine,(1-sine.square()).nonnegative().sqrt(),node_budget)
 
-    def prove_region(self, direction, *, node_budget=512,minimum_span=MINIMUM_SPAN,use_cache=True,legacy_wedge=False):
+    def prove_region(self, direction, *, node_budget=512,minimum_span=MINIMUM_SPAN,use_cache=True,legacy_wedge=False,use_union=True):
         """Enclose clearance of unit directions in a local E/N/up box."""
         from .bounded_math import dot
         if not isinstance(node_budget,int) or node_budget<0:
@@ -239,11 +239,13 @@ class CompositeClearance:
         result['minimum_polar_span']=minimum_span
         result['region_wedge_policy']='legacy-v1' if legacy_wedge else 'dyadic-v2'
         if use_cache:
-            result['cache_policy']='sky-certificate-v1'
-            cached=self.sky_cache.lookup(direction)
+            result['cache_policy']='sky-certificate-v2' if use_union else 'sky-certificate-v1'
+            cached=self.sky_cache.lookup(direction) or (self.sky_cache.lookup_union(direction) if use_union else None)
             if cached is not None:
-                result.update(clear=True,termination='cached-clearance-certificate',reuse_of=cached['proof_id'],
+                result.update(clear=True,termination='cached-clearance-certificate' if 'proof_id' in cached else 'cached-clearance-union',
                               certificate_minimum_up_lo=str(cached['minimum']),minimum_disk_up_lo=str(cached['minimum']),sky_wedge=cached['sky_wedge'])
+                if 'proof_id' in cached:result['reuse_of']=cached['proof_id']
+                else:result['reuse_of_all']=cached['reuse_of_all']
                 return result
             from decimal import Decimal,ROUND_FLOOR
             sine=Interval(sine.lo.quantize(Decimal('0.00001'),rounding=ROUND_FLOOR))

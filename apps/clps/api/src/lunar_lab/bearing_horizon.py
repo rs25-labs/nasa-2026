@@ -1,8 +1,10 @@
 """Bounded complete-terrain meridian certificates and strict sky inclusion."""
 import math
+from functools import lru_cache
 from .bounded_math import Interval,dot,sin_cos_degrees
 
 
+@lru_cache(maxsize=4096)
 def wedge_normals(start,end):
     if not (math.isfinite(start) and math.isfinite(end) and 0<end-start<180):
         raise ValueError('Invalid bearing wedge')
@@ -13,7 +15,12 @@ def wedge_normals(start,end):
 
 def bearing_wedge(direction):
     """Float corner angles propose a sector; interval half spaces decide."""
-    east,north,_=direction
+    return _bearing_wedge(direction[0],direction[1])
+
+
+@lru_cache(maxsize=4096)
+def _bearing_wedge(east,north):
+    direction=(east,north,Interval(0))
     az=math.degrees(math.atan2(east.midpoint_float(),north.midpoint_float()))
     spread=max(abs((math.degrees(math.atan2(float(e),float(n)))-az+180)%360-180)
                for e in (east.lo,east.hi) for n in (north.lo,north.hi))

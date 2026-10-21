@@ -1,5 +1,8 @@
 # Bearing horizon reuse milestone
 
+Historical PR #8 reference. The completed adaptive implementation is recorded
+in [LML-ADAPTIVE-BEARING-MILESTONE.md](LML-ADAPTIVE-BEARING-MILESTONE.md).
+
 2026-10-20. Continue from PR #7 with the owner's authorization to execute,
 verify, publish and merge, then stop at a reviewable checkpoint. No new NASA
 assets, dependencies, API/UI, training, SPHEREx work or subagents.
