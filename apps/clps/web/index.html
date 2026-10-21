@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/moon-entry.css">
-  <script src="/terrain-map.js" defer></script><script src="/sky-timeline.js" defer></script><script src="/moon-entry.js" defer></script><script src="/app.js" defer></script>
+  <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/moon-entry.css"><link rel="stylesheet" href="/site-explorer.css">
+  <script src="/terrain-map.js" defer></script><script src="/sky-timeline.js" defer></script><script src="/moon-entry.js" defer></script><script src="/site-explorer.js" defer></script><script src="/app.js" defer></script>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="#home">◐ <span>LUNAR MISSION LAB</span></a><a class="tag" href="#planner">SOUTH POLE · PLANNER ↗</a></header>
@@ -23,7 +23,7 @@
     <p class="eyebrow">FROM ORBIT TO YOUR OUTPOST</p>
     <h2 id="journey-title" tabindex="-1">A world of possibilities.</h2>
     <p id="journey-status" role="status">Turning toward the south pole…</p>
-    <p class="caption"><span class="mint">● Draft site</span> · <span class="gold">● Saved calculation sites</span></p>
+    <p class="caption"><span class="mint">● Draft</span> · <span class="catalog-blue">● Published candidate</span> · <span class="catalog-purple">◆ Exploratory</span> · <span class="gold">● Saved result</span></p>
     <div id="journey-sites" class="journey-sites" aria-label="Choose a mission site"></div>
     <div class="journey-actions"><button id="pause-moon" type="button" aria-pressed="false">Pause journey</button><a href="#planner">Choose a site now →</a></div>
   </div>
@@ -31,7 +31,19 @@
 </section>
 <main id="planner" tabindex="-1">
   <a class="back-to-moon" href="#moon">← Back to the Moon</a>
-  <div class="intro"><p class="eyebrow">FROM A PLACE TO A POSSIBILITY</p><h1>Find your window<br>on the Moon.</h1><p>Choose a landing site and date. Explore how terrain shapes sunlight and the view of Earth.</p></div>
+  <div class="intro"><p class="eyebrow">FROM A PLACE TO A POSSIBILITY</p><h1>Find your window<br> on the Moon.</h1><p>Choose a landing site and date. Explore how terrain shapes sunlight and the view of Earth.</p></div>
+  <section class="panel site-explorer" aria-labelledby="catalog-title">
+    <div class="catalog-heading"><div><p class="eyebrow">START WITH A PLACE</p><h2 id="catalog-title">Explore candidate sites</h2></div><button id="catalog-refresh" class="text-button" type="button">Refresh previews</button></div>
+    <p id="catalog-notice" class="caption" role="status">Loading the site catalog…</p>
+    <div class="catalog-filters">
+      <label>Find a site<input id="catalog-search" type="search" placeholder="Name, region or site ID"></label>
+      <label>Region<select id="catalog-region"><option value="">All regions</option></select></label>
+      <label>Show<select id="catalog-filter"><option value="all">All sites</option><option value="published-candidate">Published candidates</option><option value="exploratory-point">Exploratory points</option><option value="ready">Verified pilot previews</option></select></label>
+    </div>
+    <p id="catalog-count" class="caption" role="status"></p>
+    <div class="catalog-layout"><div id="catalog-list" class="catalog-list" role="group" aria-label="Candidate site cards"></div><article id="catalog-detail" class="catalog-detail" aria-label="Site details"><p class="caption">Choose a site card to inspect its context and available data.</p></article></div>
+    <p class="caption">Published research candidates are distinct from app-generated exploratory points. These are locations to investigate, not certified landing sites.</p>
+  </section>
   <div class="workspace">
     <section class="panel setup" aria-labelledby="setup-title">
       <div class="section-title"><span class="number">01</span><h2 id="setup-title">Set your mission</h2></div>
@@ -40,6 +52,7 @@
           <defs><pattern id="no-coverage" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#182231"/><rect width="6" height="6" fill="#253244"/><rect x="6" y="6" width="6" height="6" fill="#253244"/></pattern></defs>
           <rect width="320" height="320" fill="url(#no-coverage)"/>
           <g id="terrain-layer"><image id="terrain-image" width="320" height="320" style="image-rendering:pixelated"/>
+            <g id="catalog-markers" aria-hidden="true"></g>
             <g id="selected-marker"><circle r="10" fill="#a9e1c8" opacity=".18"/><circle r="4" fill="#a9e1c8" stroke="#10271e" stroke-width="1.5"/></g>
             <g id="result-marker" hidden><path d="M-7 0H7M0-7V7" stroke="#ffd58d" stroke-width="2.5"/></g>
           </g><path d="M150 160H170M160 150V170" stroke="#e2eaf0" stroke-opacity=".35"/>
@@ -47,7 +60,7 @@
         <div class="map-controls" aria-label="Terrain map navigation"><button id="map-in" type="button" aria-label="Zoom in">+</button><button id="map-out" type="button" aria-label="Zoom out">−</button><button id="map-reset" type="button">Full cap</button><button id="map-center" type="button">Selected site</button><button id="map-result" type="button" hidden>Result site</button></div>
         <p id="map-status" class="caption" role="status">Loading cached LOLA terrain…</p>
         <p id="site-status" class="caption" role="status"></p>
-        <p class="caption">Drag to pan · click or Enter to select<br><span class="mint">● Selected input</span> · <span class="gold">+ Displayed result</span><br>Checkered areas have no usable coverage. Relief lighting is illustrative, not calculated sunlight.</p>
+        <p class="caption">Drag to pan · click or Enter to select<br><span class="mint">● Selected input</span> · <span class="gold">+ Displayed result</span><br><span class="catalog-blue">● Published candidate</span> · <span class="catalog-purple">◆ Exploratory point</span><br>Use site cards for keyboard selection or overlapping markers.<br>Checkered areas have no usable coverage. Relief lighting is illustrative, not calculated sunlight.</p>
       </div>
       <form id="mission-form" novalidate>
         <label>Site name<input name="site_id" value="my-site" pattern="[A-Za-z0-9_-]{1,48}" maxlength="48" required></label>

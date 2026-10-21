@@ -54,6 +54,12 @@ reused and only the sixth was new. [Evidence](LML-SITE-ATLAS-PILOT-STATUS.md).
 Next is the [frozen-source long collection](LML-SITE-ATLAS-LONG-PI-HANDOFF.md),
 followed by the site/calendar/comparison UI. Full three-year archive not started.
 
+The owner reports Pi is running the frozen collection and approved the next
+UI slice. [Site explorer/cards](LML-SITE-EXPLORER-PLAN.md) now have source for
+50 browsable points, catalog markers and three deliberately published dated
+pilot previews. [Pi UI checks](LML-SITE-EXPLORER-PI-HANDOFF.md) are pending;
+no unfinished long-run data is exposed. Calendar/search/comparison follow later.
+
 ## Batch 01 — Data foundation (current handoff)
 
 - [x] Define explicit terrain/frame conventions and seven bounded asset sources.

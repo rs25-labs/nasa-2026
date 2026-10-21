@@ -49,21 +49,33 @@ const terrainMap = new TerrainMap(api, (lat, lon) => {
   form.elements.latitude_deg.value = String(lat); form.elements.longitude_deg.value = String(lon);
   moveMarker();
 });
-let savedSites = [];
+let savedSites = [],catalogSites=[];
 const moonJourney = new MoonJourney(() => {
   terrainMap.setSelected(Number(form.elements.latitude_deg.value), Number(form.elements.longitude_deg.value));
   terrainMap.center(terrainMap.selected);
   terrainMap.inspect();
 }, request => {
+  chooseSite(request);
+});
+function chooseSite(request) {
   for (const key of ["site_id", "latitude_deg", "longitude_deg"]) {
     if (request[key] !== undefined) form.elements[key].value = String(request[key]);
   }
   moveMarker();
-});
+  terrainMap.center(terrainMap.selected);terrainMap.inspect();
+}
+const siteExplorer=new SiteExplorer(api,sites=>{
+  catalogSites=sites;
+  terrainMap.setCatalog(sites,siteId=>{
+    const site=sites.find(s=>s.site_id===siteId);if(!site)return;
+    chooseSite(site);siteExplorer.inspect(siteId);
+  });
+  moveMarker();
+},site=>chooseSite(site));
 function moveMarker() {
   const lat = Number(form.elements.latitude_deg.value), lon = Number(form.elements.longitude_deg.value);
   terrainMap.setSelected(lat, lon);
-  moonJourney.setSites(savedSites, { site_id:form.elements.site_id.value, latitude_deg:lat, longitude_deg:lon });
+  moonJourney.setSites(savedSites, { site_id:form.elements.site_id.value, latitude_deg:lat, longitude_deg:lon },catalogSites);
   if (displayedRequest) {
     const changed = ["latitude_deg", "longitude_deg", "observer_height_m", "days"].some(key => Number(form.elements[key].value) !== Number(displayedRequest[key]))
       || Date.parse(form.elements.start.value + "Z") !== Date.parse(displayedRequest.start_utc);
@@ -195,6 +207,7 @@ $("retry").addEventListener("click", () => {
 });
 $("refresh").addEventListener("click", refreshSaved);
 moveMarker(); refreshSaved();
+siteExplorer.load();
 api("/api/jobs").then(jobs => {
   const active = jobs.find(job => ["queued", "running", "cancelling"].includes(job.state));
   if (active) trackJob(active);

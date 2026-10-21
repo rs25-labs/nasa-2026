@@ -24,7 +24,7 @@
       });
       this.map.addEventListener("pointerdown", event => {
         if (event.button !== 0 || !event.isPrimary || this.loading) return;
-        this.drag = { point: this.point(event), id: event.pointerId }; this.map.setPointerCapture(event.pointerId);
+        this.drag = { point: this.point(event), id: event.pointerId, siteId:event.target.closest?.("[data-catalog-site]")?.dataset.catalogSite }; this.map.setPointerCapture(event.pointerId);
       });
       this.map.addEventListener("pointermove", event => {
         if (!this.drag || event.pointerId !== this.drag.id) return;
@@ -34,8 +34,9 @@
       this.map.addEventListener("pointerup", event => {
         if (!this.drag || event.pointerId !== this.drag.id) return;
         const p = this.point(event), dx = p.x - this.drag.point.x, dy = p.y - this.drag.point.y;
-        this.drag = null; $("terrain-layer").removeAttribute("transform");
+        const siteId=this.drag.siteId;this.drag = null; $("terrain-layer").removeAttribute("transform");
         if (Math.hypot(dx, dy) > 3) this.pan(-dx / 320 * this.view.span, dy / 320 * this.view.span);
+        else if (siteId && this.onCatalogSelect) this.onCatalogSelect(siteId);
         else this.select(this.view.x + (p.x / 320 - .5) * this.view.span, this.view.y + (.5 - p.y / 320) * this.view.span);
       });
       this.map.addEventListener("pointercancel", () => { this.drag = null; $("terrain-layer").removeAttribute("transform"); });
@@ -66,7 +67,26 @@
       this.result = xy(Number(request.latitude_deg), Number(request.longitude_deg));
       $("map-result").hidden = false; this.center(this.result);
     }
+    setCatalog(sites,onSelect) {
+      this.onCatalogSelect=onSelect;this.catalog=[];$("catalog-markers").replaceChildren();
+      const ns="http://www.w3.org/2000/svg";
+      for(const site of sites) {
+        const group=document.createElementNS(ns,"g");group.dataset.catalogSite=site.site_id;group.classList.add("catalog-marker");
+        const title=document.createElementNS(ns,"title");title.textContent=`${site.name} · ${site.kind}`;
+        const hit=document.createElementNS(ns,"circle");hit.setAttribute("r","9");hit.setAttribute("fill","transparent");
+        const shape=document.createElementNS(ns,site.kind==="published-candidate"?"circle":"path");
+        if(site.kind==="published-candidate")shape.setAttribute("r","3.5");else shape.setAttribute("d","M0-4L4 0L0 4L-4 0Z");
+        shape.setAttribute("fill",site.kind==="published-candidate"?"#9bc4ff":"#c6a9ef");shape.setAttribute("stroke","#142032");shape.setAttribute("stroke-width","1");
+        group.append(title,hit,shape);$("catalog-markers").append(group);
+        this.catalog.push({node:group,point:xy(site.latitude_deg,site.longitude_deg)});
+      }
+      this.markers();
+    }
     markers() {
+      for(const {node,point} of this.catalog || []) {
+        const x=160+(point.x-this.view.x)/this.view.span*320,y=160-(point.y-this.view.y)/this.view.span*320;
+        node.toggleAttribute("hidden",this.loading||x<0||x>320||y<0||y>320);node.setAttribute("transform",`translate(${x} ${y})`);
+      }
       for (const [id, point] of [["selected-marker", this.selected], ["result-marker", this.result]]) {
         const x = point ? 160 + (point.x - this.view.x) / this.view.span * 320 : -1;
         const y = point ? 160 - (point.y - this.view.y) / this.view.span * 320 : -1;

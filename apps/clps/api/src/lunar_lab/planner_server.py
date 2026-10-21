@@ -11,6 +11,7 @@ from urllib.parse import urlsplit,parse_qs
 from .planner_jobs import Jobs
 from .result_store import load_result
 from .terrain_view import TerrainView
+from .site_atlas import sites_response
 
 REPO=Path(__file__).resolve().parents[5]
 EXPORTS={'environment-timeseries.csv','environment-intervals.csv','environment-summaries.csv','environment-report.json'}
@@ -54,6 +55,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             parts=urlsplit(self.path).path.strip('/').split('/')
+            if parts==['api','sites']:return self.send(200,sites_response(self.server.root,REPO))
             if parts==['media','moon-color.jpg']:
                 image=self.server.root/'ui-assets/moon-color.jpg'
                 if not image.is_file():return self.send(404,dict(error='Moon illustration is not cached. Terrain planning remains available.'))
@@ -106,7 +108,8 @@ class Handler(BaseHTTPRequestHandler):
                     calculation_seconds=report.get('elapsed_wall_seconds')))
             static={'':'index.html','index.html':'index.html','app.js':'app.js','style.css':'style.css',
                     'terrain-map.js':'terrain-map.js','sky-timeline.js':'sky-timeline.js',
-                    'moon-entry.js':'moon-entry.js','moon-entry.css':'moon-entry.css'}
+                    'moon-entry.js':'moon-entry.js','moon-entry.css':'moon-entry.css',
+                    'site-explorer.js':'site-explorer.js','site-explorer.css':'site-explorer.css'}
             name=static.get('/'.join(parts))
             if name:
                 kind={'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8'}[name.rsplit('.',1)[1]]

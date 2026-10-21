@@ -105,22 +105,22 @@
       else if (next === "moon") $("journey-title").focus({ preventScroll:true });
       window.scrollTo(0,0); this.redraw();
     }
-    setSites(saved, draft) {
+    setSites(saved, draft, catalog=[]) {
       const valid = request => request && Number.isFinite(Number(request.latitude_deg)) && Number.isFinite(Number(request.longitude_deg)) && Number(request.latitude_deg)>=-90 && Number(request.latitude_deg)<=-85;
       const seen = new Set();
       this.sites = [];
       if (valid(draft)) this.sites.push({ request:draft, draft:true });
-      for (const item of saved) {
+      for (const item of [...catalog.map(site=>({request:site,catalogKind:site.kind})),...saved]) {
         const r = item.request, key = `${r?.latitude_deg},${r?.longitude_deg}`;
-        if (valid(r) && !seen.has(key)) { this.sites.push({ request:r, draft:false }); seen.add(key); }
+        if (valid(r) && !seen.has(key)) { this.sites.push({ request:r, draft:false, catalogKind:item.catalogKind }); seen.add(key); }
       }
       $("moon-pins").replaceChildren(); $("journey-sites").replaceChildren();
       for (const site of this.sites) {
-        const pin = document.createElement("span"); pin.className = `globe-pin${site.draft ? " draft" : ""}`;
+        const pin = document.createElement("span"); pin.className = `globe-pin${site.draft ? " draft" : site.catalogKind==="published-candidate" ? " catalog-published" : site.catalogKind ? " catalog-exploratory" : ""}`;
         pin.dataset.latitude = site.request.latitude_deg; pin.dataset.longitude = site.request.longitude_deg;
         site.pin = pin; $("moon-pins").append(pin);
         const button = document.createElement("button"); button.type = "button";
-        button.textContent = `${site.draft ? "Draft" : site.request.site_id || "Saved site"} · ${Number(site.request.latitude_deg).toFixed(3)}°, ${Number(site.request.longitude_deg).toFixed(3)}°`;
+        button.textContent = `${site.draft ? "Draft" : site.request.name || site.request.site_id || "Saved site"} · ${Number(site.request.latitude_deg).toFixed(3)}°, ${Number(site.request.longitude_deg).toFixed(3)}°`;
         button.onclick = () => { this.onChoose(site.request); location.hash = "planner"; };
         $("journey-sites").append(button);
       }
