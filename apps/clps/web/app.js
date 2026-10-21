@@ -1,7 +1,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const form = $("mission-form");
-let activeJob = null, lastJob = null, pollTimer = null, resultRequest = 0;
+let activeJob = null, lastJob = null, pollTimer = null, resultRequest = 0, displayedRequest = null;
 const states = new Set(["FULL", "PARTIAL", "BLOCKED", "UNKNOWN"]);
 
 function el(tag, text, className) {
@@ -37,27 +37,32 @@ function bounds(lower, upper) {
 }
 function hours(value) { return value === "" || value === null || value === undefined ? "Unresolved" : `${Number(value).toFixed(1)} h`; }
 function utc(value) { return value.replace("T", " ").replace("+00:00", "Z"); }
+const skyTimeline = new SkyTimeline(selectedTime => {
+  for (const row of $("samples").children) row.classList.toggle("selected-sample", row.dataset.utc === selectedTime);
+  for (const cursor of document.querySelectorAll(".time-cursor")) {
+    const start = Number(cursor.dataset.start), end = Number(cursor.dataset.end);
+    const percent = end > start ? (Date.parse(selectedTime) - start) / (end - start) * 100 : 0;
+    cursor.style.left = `${Math.max(0, Math.min(100, percent))}%`;
+  }
+});
+const terrainMap = new TerrainMap(api, (lat, lon) => {
+  form.elements.latitude_deg.value = String(lat); form.elements.longitude_deg.value = String(lon);
+  moveMarker();
+});
 function moveMarker() {
   const lat = Number(form.elements.latitude_deg.value), lon = Number(form.elements.longitude_deg.value);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-  const radius = Math.max(0, Math.min(112, (lat + 90) / 5 * 112)), angle = lon * Math.PI / 180;
-  for (const id of ["site-dot", "site-halo"]) {
-    $(id).setAttribute("cx", String(160 + radius * Math.sin(angle)));
-    $(id).setAttribute("cy", String(140 - radius * Math.cos(angle)));
+  terrainMap.setSelected(lat, lon);
+  if (displayedRequest) {
+    const changed = ["latitude_deg", "longitude_deg", "observer_height_m", "days"].some(key => Number(form.elements[key].value) !== Number(displayedRequest[key]))
+      || Date.parse(form.elements.start.value + "Z") !== Date.parse(displayedRequest.start_utc);
+    $("draft-notice").hidden = !changed;
   }
 }
 form.addEventListener("input", moveMarker);
-$("map").addEventListener("click", event => {
-  const point = $("map").createSVGPoint(); point.x = event.clientX; point.y = event.clientY;
-  const local = point.matrixTransform($("map").getScreenCTM().inverse());
-  const dx = local.x - 160, dy = local.y - 140, radius = Math.hypot(dx, dy);
-  if (radius > 112) return;
-  form.elements.latitude_deg.value = (-90 + radius / 112 * 5).toFixed(4);
-  form.elements.longitude_deg.value = (Math.atan2(dx, -dy) * 180 / Math.PI).toFixed(4);
-  moveMarker();
-});
+for (const key of ["latitude_deg", "longitude_deg"]) form.elements[key].addEventListener("change", () => terrainMap.inspect());
 
 function renderResult(result) {
+  displayedRequest = result.request;
   $("empty").hidden = true; $("results").hidden = false;
   $("result-title").textContent = result.request.site_id || "Mission environment";
   $("result-meta").textContent = `${result.request.latitude_deg}° latitude · ${result.request.longitude_deg}° longitude · ${utc(result.request.start_utc)} → ${utc(result.request.end_utc)}`;
@@ -75,14 +80,21 @@ function renderResult(result) {
     const row = el("div", undefined, "timeline-row"), label = el("div", undefined, "timeline-label");
     label.append(el("span", name), el("span", `${hours(summary.total_hours)} total`));
     const track = el("div", undefined, "track");
-    track.setAttribute("role", "img"); track.setAttribute("aria-label", `${name} sampled intervals; details in the sample table`);
+    track.setAttribute("role", "group"); track.setAttribute("aria-label", `${name} intervals; choose an interval to inspect its start`);
     const intervals = result.intervals.filter(i => i.body === summary.body);
     for (const interval of intervals) {
       const state = states.has(interval.state) ? interval.state : "UNKNOWN";
-      const segment = el("span", undefined, `interval ${state}`);
+      const segment = el("button", undefined, `interval ${state}`); segment.type = "button";
       segment.style.width = `${Number(interval.duration_hours) / Number(summary.total_hours) * 100}%`;
       segment.title = `${state}: ${utc(interval.start_utc)} → ${utc(interval.end_utc)} (${hours(interval.duration_hours)})`;
+      segment.setAttribute("aria-label", `${name} ${segment.title}`);
+      segment.addEventListener("click", () => skyTimeline.seek(interval.start_utc));
       track.append(segment);
+    }
+    if (intervals.length) {
+      const cursor = el("span", undefined, "time-cursor"); cursor.setAttribute("aria-hidden", "true");
+      cursor.dataset.start = String(Date.parse(intervals[0].start_utc));
+      cursor.dataset.end = String(Date.parse(intervals[intervals.length - 1].end_utc)); track.append(cursor);
     }
     row.append(label, track);
     if (intervals.length) row.append(el("p", `${utc(intervals[0].start_utc)} → ${utc(intervals[intervals.length - 1].end_utc)}`, "caption"));
@@ -90,8 +102,12 @@ function renderResult(result) {
   }
   for (const sample of result.samples) {
     const row = el("tr"), state = states.has(sample.state) ? sample.state : "UNKNOWN";
+    row.dataset.utc = sample.utc;
     const stateCell = el("td"); stateCell.append(el("span", state, `state ${state}`));
-    row.append(el("td", utc(sample.utc)), el("td", sample.body), stateCell,
+    const timeCell = el("td"), timeButton = el("button", utc(sample.utc), "sample-time"); timeButton.type = "button";
+    timeButton.setAttribute("aria-label", `Show sky at ${utc(sample.utc)} for ${sample.body}`);
+    timeButton.addEventListener("click", () => skyTimeline.seek(sample.utc)); timeCell.append(timeButton);
+    row.append(timeCell, el("td", sample.body), stateCell,
       el("td", bounds(sample.visible_fraction_lower, sample.visible_fraction_upper)));
     $("samples").append(row);
   }
@@ -99,6 +115,7 @@ function renderResult(result) {
     const link = el("a", label); link.href = `/api/results/${result.cache_key}/${name}`; link.download = name;
     $("exports").append(link);
   }
+  terrainMap.setResult(result.request); skyTimeline.setResult(result); moveMarker();
 }
 async function openResult(key) {
   const request = ++resultRequest;

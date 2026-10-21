@@ -7,9 +7,10 @@ import json
 import math
 from pathlib import Path
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,parse_qs
 from .planner_jobs import Jobs
 from .result_store import load_result
+from .terrain_view import TerrainView
 
 REPO=Path(__file__).resolve().parents[5]
 EXPORTS={'environment-timeseries.csv','environment-intervals.csv','environment-summaries.csv','environment-report.json'}
@@ -53,6 +54,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             parts=urlsplit(self.path).path.strip('/').split('/')
+            if parts in (['api','terrain'],['api','terrain','site']):
+                query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
+                expected={'latitude','longitude'} if len(parts)==3 else {'x','y','span'}
+                try:
+                    if set(query)!=expected or any(len(v)!=1 for v in query.values()):raise ValueError('Invalid terrain query.')
+                    numbers={key:float(values[0]) for key,values in query.items()}
+                    data=self.server.terrain.site(numbers['latitude'],numbers['longitude']) if len(parts)==3 else self.server.terrain.viewport(numbers['x'],numbers['y'],numbers['span'])
+                    return self.send(200,data)
+                except (ValueError,TypeError) as exc:return self.send(422,dict(error=str(exc)))
+                except (OSError,KeyError) as exc:return self.send(503,dict(error=f'Cached terrain unavailable: {exc}'))
             if parts==['api','jobs']:return self.send(200,self.server.jobs.list())
             if len(parts)==3 and parts[:2]==['api','jobs']:return self.send(200,self.server.jobs.get(parts[2]))
             if parts==['api','saved']:
@@ -87,8 +98,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200,dict(cache_key=parts[2],run_id=saved['run_id'],request=report['request'],
                     summaries=saved['summaries'],samples=table('environment-timeseries.csv'),
                     intervals=table('environment-intervals.csv'),created_utc=report['created_utc'],
+                    horizon=table('horizon-profile.csv'),
                     calculation_seconds=report.get('elapsed_wall_seconds')))
-            static={'':'index.html','index.html':'index.html','app.js':'app.js','style.css':'style.css'}
+            static={'':'index.html','index.html':'index.html','app.js':'app.js','style.css':'style.css',
+                    'terrain-map.js':'terrain-map.js','sky-timeline.js':'sky-timeline.js'}
             name=static.get('/'.join(parts))
             if name:
                 kind={'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8'}[name.rsplit('.',1)[1]]
@@ -124,6 +137,7 @@ def main():
     args=parser.parse_args()
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
     server.root=args.work_dir.resolve();server.jobs=Jobs(server.root,REPO)
+    server.terrain=TerrainView(server.root,REPO/'data/manifests/clps/foundation-sources.json')
     print(f'Lunar Mission Lab: http://127.0.0.1:{server.server_port}',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css">
-  <script src="/app.js" defer></script>
+  <script src="/terrain-map.js" defer></script><script src="/sky-timeline.js" defer></script><script src="/app.js" defer></script>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="/">◐ <span>LUNAR MISSION LAB</span></a><span class="tag">SOUTH POLE · PLANNER</span></header>
@@ -13,13 +13,18 @@
     <section class="panel setup" aria-labelledby="setup-title">
       <div class="section-title"><span class="number">01</span><h2 id="setup-title">Set your mission</h2></div>
       <div class="polar">
-        <svg id="map" viewBox="0 0 320 290" role="img" aria-label="South-pole coordinate schematic. Use the coordinate fields to select a site with a keyboard.">
-          <defs><radialGradient id="cap"><stop stop-color="#374659"/><stop offset="1" stop-color="#18212e"/></radialGradient></defs>
-          <circle cx="160" cy="140" r="112" fill="url(#cap)"/><g fill="none" stroke="#526073" stroke-width=".7"><circle cx="160" cy="140" r="112"/><circle cx="160" cy="140" r="67" stroke-dasharray="3 5"/><circle cx="160" cy="140" r="22" stroke-dasharray="3 5"/><path d="M48 140H272M160 28V252M81 61L239 219M81 219L239 61"/></g>
-          <g fill="#9eaabd" font-size="10" text-anchor="middle"><text x="160" y="17">0°</text><text x="292" y="144">90°E</text><text x="28" y="144">90°W</text><text x="160" y="272">180°</text><text x="188" y="132">90°S</text><text x="236" y="74">85°S</text></g>
-          <circle id="site-halo" cx="160" cy="130" r="12" fill="#a9e1c8" opacity=".12"/><circle id="site-dot" cx="160" cy="130" r="4" fill="#a9e1c8" stroke="#ecfff5" stroke-width="1"/>
+        <svg id="map" viewBox="0 0 320 320" role="img" tabindex="0" aria-label="LOLA south-polar elevation map. Arrow keys pan, plus and minus zoom, Enter selects center. Coordinate fields provide another keyboard selection path.">
+          <defs><pattern id="no-coverage" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#182231"/><rect width="6" height="6" fill="#253244"/><rect x="6" y="6" width="6" height="6" fill="#253244"/></pattern></defs>
+          <rect width="320" height="320" fill="url(#no-coverage)"/>
+          <g id="terrain-layer"><image id="terrain-image" width="320" height="320" style="image-rendering:pixelated"/>
+            <g id="selected-marker"><circle r="10" fill="#a9e1c8" opacity=".18"/><circle r="4" fill="#a9e1c8" stroke="#10271e" stroke-width="1.5"/></g>
+            <g id="result-marker" hidden><path d="M-7 0H7M0-7V7" stroke="#ffd58d" stroke-width="2.5"/></g>
+          </g><path d="M150 160H170M160 150V170" stroke="#e2eaf0" stroke-opacity=".35"/>
         </svg>
-        <p class="caption">Coordinate schematic · click to choose a site<br>Terrain is used in calculation; this is not a terrain basemap.</p>
+        <div class="map-controls" aria-label="Terrain map navigation"><button id="map-in" type="button" aria-label="Zoom in">+</button><button id="map-out" type="button" aria-label="Zoom out">−</button><button id="map-reset" type="button">Full cap</button><button id="map-center" type="button">Selected site</button><button id="map-result" type="button" hidden>Result site</button></div>
+        <p id="map-status" class="caption" role="status">Loading cached LOLA terrain…</p>
+        <p id="site-status" class="caption" role="status"></p>
+        <p class="caption">Drag to pan · click or Enter to select<br><span class="mint">● Selected input</span> · <span class="gold">+ Displayed result</span><br>Checkered areas have no usable coverage. Relief lighting is illustrative, not calculated sunlight.</p>
       </div>
       <form id="mission-form" novalidate>
         <label>Site name<input name="site_id" value="my-site" pattern="[A-Za-z0-9_-]{1,48}" maxlength="48" required></label>
@@ -39,9 +44,20 @@
       <section id="results" class="panel results" hidden aria-labelledby="result-title">
         <div class="section-title"><span class="number">02</span><div><p class="eyebrow">CALCULATED ENVIRONMENT</p><h2 id="result-title"></h2></div></div>
         <p id="result-meta" class="caption"></p>
+        <p id="draft-notice" class="caption" hidden>Inputs have changed. The sky and results still belong to the displayed calculation; calculate again to update them.</p>
         <div id="summary" class="summary-grid"></div>
+        <section class="sky-section" aria-labelledby="sky-title">
+          <h3 id="sky-title">Sky from the result site</h3>
+          <svg id="sky" viewBox="0 0 640 300" role="img" aria-label="Calculated Sun and Earth directions above the sampled diagnostic terrain profile"></svg>
+          <p class="caption">The horizon line joins sampled bearings for context; it is not a certified complete horizon. Visibility labels come from the saved calculation. Markers are enlarged for readability.</p>
+          <div class="time-heading"><strong id="selected-time"></strong><span id="sample-index" class="caption"></span></div>
+          <label class="sr-only" for="time-slider">Selected calculated time</label><input id="time-slider" type="range" min="0" max="0" value="0" step="1" disabled>
+          <div class="time-controls"><button id="time-prev" type="button" disabled aria-label="Previous calculated sample">← Previous</button><button id="time-play" type="button" disabled aria-pressed="false">Play samples</button><button id="time-next" type="button" disabled aria-label="Next calculated sample">Next →</button></div>
+          <div id="sky-readout" class="sky-readout" aria-live="polite"></div>
+          <p id="time-note" class="caption">Playback steps through calculated samples. No positions or visibility are interpolated between samples.</p>
+        </section>
         <h3>Operating timeline</h3><div class="legend"><span class="FULL">Full</span><span class="PARTIAL">Partial</span><span class="BLOCKED">Blocked</span><span class="UNKNOWN">Unknown</span></div>
-        <div id="timeline"></div><p class="caption">Intervals hold each sampled state until the next sample. Boundaries are estimates; the final sample adds no duration.</p>
+        <div id="timeline"></div><p class="caption">Select an interval to inspect its start. Intervals hold each sampled state until the next sample. Boundaries are estimates; the final sample adds no duration.</p>
         <details><summary>Inspect sample-by-sample bounds</summary><p class="caption">Percentages are rounded for display. Exports retain the original precision.</p><div class="table-wrap"><table><thead><tr><th scope="col">UTC</th><th scope="col">Body</th><th scope="col">State</th><th scope="col">Visible disk</th></tr></thead><tbody id="samples"></tbody></table></div></details>
         <h3>Take the evidence with you</h3><div id="exports" class="exports"></div>
         <details class="methods"><summary>What these results mean</summary><p>Ranges are calculated lower and upper bounds, conditional on the terrain model and reported geometric directions. Wider ranges and UNKNOWN states remain visible; they do not prevent a result from being shown.</p><p>Earth-disk visibility describes the visible area of Earth. It is not Earth-center communications visibility or a radio link budget. Terrain height error is not bounded by this model. Six-hour samples do not establish exact event times.</p><p id="run-id" class="caption"></p></details>

@@ -22,6 +22,12 @@ submission errors) on `28387ec`. The [first planner milestone](LML-PLANNER-MILES
 is verified. Stop here for the owner's app stocktake; the next
 recommended slice is terrain map and synchronized sky/timeline interaction.
 
+The owner approved that next slice. [Map/sky source](LML-MAP-SKY-PLAN.md) now adds
+an offline LOLA terrain viewport and discrete sample controls linking the saved
+sky, interval cursors and sample table. The [map/sky Pi handoff](LML-MAP-SKY-PI-HANDOFF.md)
+is pending; no runtime/visual verification is claimed yet. Solver logic and
+the retired numerical acceptance gate are unchanged.
+
 ## Batch 01 — Data foundation (current handoff)
 
 - [x] Define explicit terrain/frame conventions and seven bounded asset sources.
