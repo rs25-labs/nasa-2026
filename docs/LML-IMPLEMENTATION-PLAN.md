@@ -42,9 +42,10 @@ the historical execution authorization below describes prior checkpoints.
 Precision and performance acceptance remain pending; Batch 02/L03 readiness is
 incomplete. The owner now authorizes the remaining Lunar backend milestones
 before UI work; see [backend readiness](LML-BACKEND-READINESS.md). The immediate
-next batch is the [v7 precision handoff](LML-PRECISION-TARGET-PI-HANDOFF.md).
+action is the [precision design review](LML-PRECISION-DESIGN-REVIEW.md).
 Pi measured unchanged bounds for v5; v6 narrowed the width to 1.39 percentage
-points but still failed the 1-point acceptance target.
+points and v7 to 1.0593, but both failed the 1-point acceptance target. The
+third-candidate stop is reached; review work policy before further corrections.
 Historical execution exceptions do not override the current Pi execution
 assignment. No new SPHEREx or UI implementation is included in this batch.
 

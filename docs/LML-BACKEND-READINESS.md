@@ -16,9 +16,10 @@ The adaptive algorithm exists, but its measured fixed transition width is
 0.017934151658148993 rather than <=0.01. Pi measured the v5 scheduling candidate:
 identical bounds, target not met. That experiment is removed. Pi then measured
 v6 disk-edge accounting: width 0.01388282226328252, narrower but still failing.
-The current v7 reuse-only candidate awaits the
-[precision handoff](LML-PRECISION-TARGET-PI-HANDOFF.md), the immediate next
-execution batch. No v7 acceptance or runtime improvement is claimed yet.
+Pi measured v7 at width 0.010592929572963818: narrower but still failing, with
+higher sample runtime. Three bounded candidates have now missed the target.
+The next action is the [precision design review](LML-PRECISION-DESIGN-REVIEW.md),
+not another automatic run or limit increase. This branch is not ready to merge.
 
 ## Remaining deliverables, in dependency order
 

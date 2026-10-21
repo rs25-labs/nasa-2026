@@ -1,5 +1,11 @@
 # Pi handoff — v7 reuse-only proof checks
 
+**Completed with failed acceptance:** Pi ran the fixed sample on `b1f89f4`;
+width 0.010592929572963818 exceeded 0.01. Do not rerun this handoff automatically
+or continue to step 3. The next action is the
+[precision design review](LML-PRECISION-DESIGN-REVIEW.md). Commands below are
+retained as the historical handoff.
+
 Use the current checkout on `codex/lunar-precision-target`. Source is prepared,
 not runtime-verified. Preserve unrelated files. No installation, downloads,
 parameter sweep or budget changes. Stop at the first failure, return the exact

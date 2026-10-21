@@ -105,3 +105,16 @@ and prohibition of traversal. Pi must measure v7 using the same fixed gate.
 If this third bounded candidate also misses, stop for a work-policy/precision
 design review rather than adding another automatic cap increase. No target
 achievement or runtime improvement is claimed for v7.
+
+## V7 result — stop incremental corrections
+
+Pi measured width 0.010592929572963818, interval
+[0.409994194837805, 0.42058712441076884], exit 2. Inner time was 37.2578 s;
+wall time 37.84 s. Full classifications, terrain visits and reuse-only checks
+all reached their limits; 15,173/16,384 tiles were visited. No full run or
+artifact replay followed. Source remains at `b1f89f4` pending review.
+
+The agreed third-candidate stop has been reached. See the
+[design review](LML-PRECISION-DESIGN-REVIEW.md) for measured tradeoffs and the
+proposed next direction. No further algorithm or budget change is part of this
+stocktake.
