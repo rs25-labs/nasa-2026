@@ -20,6 +20,7 @@ from .terrain_bounds import circle_cap, cap_cosine_range
 MODEL_ID = 'lml-composite-cell-solid-v1'
 NODE_BUDGET = 4096
 CACHE_BUDGET = 16384
+MINIMUM_SPAN = 1/256
 
 
 @dataclass
@@ -38,10 +39,12 @@ class Node:
     def id(self):
         return ':'.join(map(str, self.box))
 
-    def children(self):
+    def children(self,minimum_span=1):
         r0, r1, c0, c1 = self.box
-        rs = (r0, (r0+r1)//2, r1) if r1-r0 > 1 else (r0, r1)
-        cs = (c0, (c0+c1)//2, c1) if c1-c0 > 1 else (c0, c1)
+        rm=(r0+r1)//2 if r1-r0>1 else (r0+r1)/2
+        cm=(c0+c1)//2 if c1-c0>1 else (c0+c1)/2
+        rs = (r0,rm,r1) if r1-r0>minimum_span else (r0,r1)
+        cs = (c0,cm,c1) if c1-c0>minimum_span else (c0,c1)
         return [(a,b,c,d) for a,b in zip(rs,rs[1:]) for c,d in zip(cs,cs[1:])]
 
 
@@ -61,6 +64,8 @@ class CompositeClearance:
         self.area_proofs = []
         self.band_envelope = None
         self.band_sine_upper = None
+        from .clearance_cache import SkyCertificateCache
+        self.sky_cache=SkyCertificateCache()
         self.began = time.perf_counter()
         # Include any slivers of the nominal cap outside the raster rectangle
         # as unknown cells. Verify the padded rectangle covers the cap.
@@ -100,6 +105,8 @@ class CompositeClearance:
         t = self.terrain
         node.valid = 0 <= r0 < r1 <= t.rows and 0 <= c0 < c1 <= t.cols
         if node.valid:
+            import math
+            r0,r1,c0,c1=math.floor(r0),math.ceil(r1),math.floor(c0),math.ceil(c1)
             maximum = -32768
             # Row chunks bound temporary validity arrays, even at the root.
             for start in range(r0,r1,128):
@@ -197,16 +204,30 @@ class CompositeClearance:
             maxima.append(sin_cos_degrees(theta)[0].hi)
         self.band_sine_upper = max(maxima)
 
-    def prove_region(self, direction, *, node_budget=512):
+    def prove_region(self, direction, *, node_budget=512,minimum_span=MINIMUM_SPAN,use_cache=True,legacy_wedge=False):
         """Enclose clearance of unit directions in a local E/N/up box."""
         from .bounded_math import dot
         if not isinstance(node_budget,int) or node_budget<0:
             raise ValueError('Invalid region node budget')
+        if minimum_span not in tuple(2**-p for p in range(9)):
+            raise ValueError('Unsupported polar subpixel span')
         east,north,up = direction
         sine = Interval(max(Interval(-1).lo,up.lo))
         result = dict(clear=False,model_id=MODEL_ID,node_budget=node_budget,visited_nodes=0,
                       cache_budget=self.cache_budget,termination='',terminal_nodes=[],unresolved_node='',
                       minimum_disk_up_lo=str(sine.lo),region_direction=[[str(d.lo),str(d.hi)] for d in direction])
+        result['minimum_polar_span']=minimum_span
+        result['region_wedge_policy']='legacy-v1' if legacy_wedge else 'dyadic-v2'
+        if use_cache:
+            result['cache_policy']='sky-certificate-v1'
+            cached=self.sky_cache.lookup(direction)
+            if cached is not None:
+                result.update(clear=True,termination='cached-clearance-certificate',reuse_of=cached['proof_id'],
+                              certificate_minimum_up_lo=str(cached['minimum']),minimum_disk_up_lo=str(cached['minimum']),sky_wedge=cached['sky_wedge'])
+                return result
+            from decimal import Decimal,ROUND_FLOOR
+            sine=Interval(sine.lo.quantize(Decimal('0.00001'),rounding=ROUND_FLOOR))
+            result['minimum_disk_up_lo']=str(sine.lo)
         if sine.lo <= -1:
             result['termination'] = 'region-includes-nadir'
             return result
@@ -218,18 +239,30 @@ class CompositeClearance:
         import math
         az = math.degrees(math.atan2(east.midpoint_float(),north.midpoint_float())) % 360
         normals = []
-        for half in (1,2,4,8,16,32,64,89):
+        result['sky_wedge']=[]
+        widths=(1/1024,1/512,1/256,1/128,1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16,32,64,89)
+        # Corner bearings propose a wedge; interval inclusion decides.
+        spread=max(abs((math.degrees(math.atan2(float(e),float(n)))-az+180)%360-180)
+                   for e in (east.lo,east.hi) for n in (north.lo,north.hi))
+        candidates=(1,2,4,8,16,32,64,89) if legacy_wedge else (w for w in widths if w>spread)
+        for half in candidates:
             ss,sc = sin_cos_degrees((az-half)%360)
             es,ec = sin_cos_degrees((az+half)%360)
             sa,ca = sin_cos_degrees(az)
             local = ((sc,-ss,Interval(0)),(-ec,es,Interval(0)),(sa,ca,Interval(0)))
             if all(dot(n,direction).lo > 0 for n in local):
                 normals = [tuple(a*e+b*n for e,n in zip(self.east,self.north)) for a,b,_ in local]
+                # Store exact input angles rather than rounded interval
+                # coefficient midpoints for the published certificate.
+                result['sky_wedge_angles']=[(az-half)%360,(az+half)%360,az]
+                result['sky_wedge']=[[str(a.lo),str(a.hi),str(b.lo),str(b.hi)] for a,b,_ in local]
                 break
         return self._walk(result,normals,sine,cosine,node_budget)
 
-    def prove(self, row, *, node_budget=NODE_BUDGET):
+    def prove(self, row, *, node_budget=NODE_BUDGET,minimum_span=MINIMUM_SPAN):
         from math import isfinite
+        if minimum_span not in tuple(2**-p for p in range(9)):
+            raise ValueError('Unsupported polar subpixel span')
         az,elev,rho = (float(row[k]) for k in ('azimuth_deg','center_elevation_deg','angular_radius_deg'))
         if not all(isfinite(v) for v in (az,elev,rho)) or not -90 <= elev <= 90 or not 0 < rho < 90:
             raise ValueError('Invalid composite disk geometry')
@@ -242,6 +275,7 @@ class CompositeClearance:
             'node_budget': node_budget, 'visited_nodes': 0,
             'cache_budget': self.cache_budget, 'termination': '',
             'terminal_nodes': [], 'unresolved_node': '',
+            'minimum_polar_span':minimum_span,
         }
         if threshold.lo <= -90:
             result['termination'] = 'disk-includes-nadir'
@@ -282,12 +316,12 @@ class CompositeClearance:
                 criterion = 'below-disk-minimum'
             if criterion:
                 result['terminal_nodes'].append({'node_id':node.id,'criterion':criterion})
-            elif box[1]-box[0]==box[3]-box[2]==1:
+            elif max(box[1]-box[0],box[3]-box[2])<=result.get('minimum_polar_span',1):
                 result['termination'] = 'unresolved-polar-cell' if node.valid else 'unknown-polar-cell'
                 result['unresolved_node'] = node.id
                 break
             else:
-                stack.extend(reversed(node.children()))
+                stack.extend(reversed(node.children(result.get('minimum_polar_span',1))))
         else:
             result['clear'] = True
             result['termination'] = 'all-composite-terrain-below-disk'
@@ -317,4 +351,6 @@ class CompositeClearance:
                     arithmetic='50-digit outward Decimal intervals; strict trigonometric comparisons',
                     exterior_latitude_bands=self.band_envelope,
                     exterior_upper_sine=str(self.band_sine_upper) if self.band_sine_upper is not None else None,
+                    minimum_polar_span=MINIMUM_SPAN,sky_certificate_cache=dict(capacity=self.sky_cache.capacity,
+                        entries=len(self.sky_cache.entries),lookups=self.sky_cache.lookups,hits=self.sky_cache.hits),
                     global_terrain=self.global_terrain.metadata())

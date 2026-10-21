@@ -1,5 +1,8 @@
 # Finite-disk visibility engine milestone
 
+Historical PR #6 reference. The follow-on measured precision checkpoint is
+[LML-PRECISION-MILESTONE.md](LML-PRECISION-MILESTONE.md).
+
 2026-10-20. Owner authorized continuing without approval pauses and stopping
 at a real milestone. This checkpoint delivers model-conditional BLOCKED,
 FULL, PARTIAL and UNKNOWN with bounded projected disk fractions, evidence
