@@ -15,6 +15,16 @@ Stop at the first genuine failure; return exact evidence and one next action.
 
 ## 1. Focused fixture and derived view preparation
 
+This branch includes the same site-explorer template-literal correction as the
+main branch follow-up to Pi's `aa32bd9` browser failure. First run these bounded
+syntax checks here; require exit zero before preparation or browser testing:
+
+```bash
+node --check apps/clps/web/site-explorer.js
+node --check apps/clps/web/seasonal-planner.js
+node --check apps/clps/web/app.js
+```
+
 Run from the isolated worktree above. Explicit paths avoid using a nonexistent
 worktree virtual environment or creating a second scientific asset cache.
 
