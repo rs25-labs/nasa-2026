@@ -6,8 +6,8 @@
   const fixed = (value,digits=1) => Number.isFinite(value) ? value.toFixed(digits) : "Unavailable";
   const date = value => value.replace("T"," ").replace("+00:00"," UTC");
   window.SiteExplorer = class {
-    constructor(api,onLoaded,onChoose) {
-      this.api=api;this.onLoaded=onLoaded;this.onChoose=onChoose;this.sites=[];this.request=0;
+    constructor(api,onLoaded,onChoose,onCompare) {
+      this.api=api;this.onLoaded=onLoaded;this.onChoose=onChoose;this.onCompare=onCompare;this.sites=[];this.request=0;
       $("catalog-search").oninput=() => this.renderList();
       $("catalog-region").onchange=() => this.renderList();$("catalog-filter").onchange=() => this.renderList();
       $("catalog-refresh").onclick=() => this.load();
@@ -86,6 +86,7 @@
       const choose=node("button","Use this site →","primary");choose.type="button";
       choose.onclick=()=>{this.onChoose(site);const status=node("p","Draft location updated. Date and height retained; no calculation started.","caption site-choice-status");status.setAttribute("role","status");detail.querySelector(".site-choice-status")?.remove();detail.append(status);};
       detail.append(choose);
+      if(this.onCompare){const compare=node("button","Add to mission comparison","compare-site");compare.type="button";compare.onclick=()=>this.onCompare(site.site_id);detail.append(compare);}
     }
   };
 })();

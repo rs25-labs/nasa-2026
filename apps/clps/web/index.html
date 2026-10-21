@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/moon-entry.css"><link rel="stylesheet" href="/site-explorer.css">
-  <script src="/terrain-map.js" defer></script><script src="/sky-timeline.js" defer></script><script src="/moon-entry.js" defer></script><script src="/site-explorer.js" defer></script><script src="/app.js" defer></script>
+  <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/moon-entry.css"><link rel="stylesheet" href="/site-explorer.css"><link rel="stylesheet" href="/seasonal-planner.css">
+  <script src="/terrain-map.js" defer></script><script src="/sky-timeline.js" defer></script><script src="/moon-entry.js" defer></script><script src="/site-explorer.js" defer></script><script src="/seasonal-planner.js" defer></script><script src="/app.js" defer></script>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="#home">◐ <span>LUNAR MISSION LAB</span></a><a class="tag" href="#planner">SOUTH POLE · PLANNER ↗</a></header>
@@ -44,6 +44,26 @@
     <div class="catalog-layout"><div id="catalog-list" class="catalog-list" role="group" aria-label="Candidate site cards"></div><article id="catalog-detail" class="catalog-detail" aria-label="Site details"><p class="caption">Choose a site card to inspect its context and available data.</p></article></div>
     <p class="caption">Published research candidates are distinct from app-generated exploratory points. These are locations to investigate, not certified landing sites.</p>
   </section>
+  <section class="panel seasonal-planner" aria-labelledby="seasonal-title">
+    <p class="eyebrow">FIND YOUR TIME</p><h2 id="seasonal-title">Seasons and mission windows</h2>
+    <p id="planning-notice" class="caption" role="status">Choose a site to inspect published seasonal coverage.</p>
+    <div class="planning-controls">
+      <label>Calendar site<select id="planning-site"></select></label>
+      <label>Year<select id="planning-year"><option>2026</option><option>2027</option><option>2028</option></select></label>
+      <label>Month<select id="planning-month"></select></label>
+      <label>Mission duration<select id="planning-days"><option value="1">1 day</option><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option></select></label>
+    </div>
+    <p class="caption">Monthly cards show only collected dates. Bar lengths show lower and upper sampled mean visible-disk estimates; they do not bound conditions between samples. Missing months are unavailable, never zero visibility.</p>
+    <div id="planning-calendar" class="planning-calendar" role="group" aria-label="Monthly coverage calendar"></div>
+    <div class="finder-heading"><h3>Find a favorable surface stay</h3><label>Rank by<select id="planning-rank"><option value="sun">Sunlight · lower estimate</option><option value="earth">Earth visibility · lower estimate</option><option value="joint">Both visible · known sampled time</option><option value="darkness">Shortest known darkness</option></select></label></div>
+    <p id="finder-status" class="caption" role="status"></p>
+    <div id="planning-windows" class="planning-windows"></div>
+    <section class="comparison" aria-labelledby="comparison-title"><h3 id="comparison-title">Compare the same mission at three sites</h3>
+      <div class="planning-controls"><label>UTC start date<input id="comparison-date" type="date" min="2026-01-01" max="2028-12-31" value="2026-11-19"></label><label>Site 1<select id="comparison-site-0"></select></label><label>Site 2<select id="comparison-site-1"></select></label><label>Site 3<select id="comparison-site-2"></select></label></div>
+      <p class="caption">Comparison uses the duration above, at 2 m observer height and hourly cadence. Missing coverage is unavailable, never zero.</p>
+      <p id="comparison-status" class="caption" role="status"></p><div id="comparison-table" class="table-wrap"></div>
+    </section>
+  </section>
   <div class="workspace">
     <section class="panel setup" aria-labelledby="setup-title">
       <div class="section-title"><span class="number">01</span><h2 id="setup-title">Set your mission</h2></div>
@@ -63,6 +83,7 @@
         <p class="caption">Drag to pan · click or Enter to select<br><span class="mint">● Selected input</span> · <span class="gold">+ Displayed result</span><br><span class="catalog-blue">● Published candidate</span> · <span class="catalog-purple">◆ Exploratory point</span><br>Use site cards for keyboard selection or overlapping markers.<br>Checkered areas have no usable coverage. Relief lighting is illustrative, not calculated sunlight.</p>
       </div>
       <form id="mission-form" novalidate>
+        <p id="planning-draft-status" class="caption" role="status"></p>
         <label>Site name<input name="site_id" value="my-site" pattern="[A-Za-z0-9_-]{1,48}" maxlength="48" required></label>
         <div class="pair"><label>Latitude, °<input name="latitude_deg" type="number" value="-89.54" min="-90" max="-85" step="any" required></label><label>Longitude, °<input name="longitude_deg" type="number" value="0" min="-180" max="180" step="any" required></label></div>
         <label>Start date & time · UTC<input name="start" type="datetime-local" value="2026-11-23T21:00" min="2026-01-01T00:00" max="2028-12-31T23:59" required></label>

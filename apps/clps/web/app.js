@@ -58,20 +58,30 @@ const moonJourney = new MoonJourney(() => {
   chooseSite(request);
 });
 function chooseSite(request) {
+  $("planning-draft-status").textContent="";
   for (const key of ["site_id", "latitude_deg", "longitude_deg"]) {
     if (request[key] !== undefined) form.elements[key].value = String(request[key]);
   }
   moveMarker();
   terrainMap.center(terrainMap.selected);terrainMap.inspect();
 }
+const planningTools=new PlanningTools(api,(site,row)=>{
+  form.elements.start.value=row.start_utc.slice(0,16);
+  form.elements.days.value=String(row.mission_days);
+  form.elements.observer_height_m.value="2";
+  chooseSite(site);
+  $("planning-draft-status").textContent="Copied archived mission inputs into the draft at 2 m. No calculation started. Calculate uses the six-hour cadence shown below; the planning preview uses hourly samples.";
+  form.scrollIntoView({block:"start"});form.elements.start.focus({preventScroll:true});
+});
 const siteExplorer=new SiteExplorer(api,sites=>{
   catalogSites=sites;
+  planningTools.setCatalog(sites);
   terrainMap.setCatalog(sites,siteId=>{
     const site=sites.find(s=>s.site_id===siteId);if(!site)return;
     chooseSite(site);siteExplorer.inspect(siteId);
   });
   moveMarker();
-},site=>chooseSite(site));
+},site=>chooseSite(site),siteId=>planningTools.addComparison(siteId));
 function moveMarker() {
   const lat = Number(form.elements.latitude_deg.value), lon = Number(form.elements.longitude_deg.value);
   terrainMap.setSelected(lat, lon);
@@ -83,6 +93,7 @@ function moveMarker() {
   }
 }
 form.addEventListener("input", moveMarker);
+form.addEventListener("input",()=>{$("planning-draft-status").textContent="";});
 for (const key of ["latitude_deg", "longitude_deg"]) form.elements[key].addEventListener("change", () => terrainMap.inspect());
 
 function renderResult(result) {

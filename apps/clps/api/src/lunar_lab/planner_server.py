@@ -12,6 +12,7 @@ from .planner_jobs import Jobs
 from .result_store import load_result
 from .terrain_view import TerrainView
 from .site_atlas import sites_response
+from .planning_views import planning_response
 
 REPO=Path(__file__).resolve().parents[5]
 EXPORTS={'environment-timeseries.csv','environment-intervals.csv','environment-summaries.csv','environment-report.json'}
@@ -55,6 +56,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             parts=urlsplit(self.path).path.strip('/').split('/')
+            if parts==['api','site-planning']:
+                query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
+                if set(query)!={'site'} or len(query['site'])!=1:return self.send(422,dict(error='Provide one catalog site ID'))
+                try:return self.send(200,planning_response(self.server.root,REPO,query['site'][0]))
+                except ValueError as exc:return self.send(422,dict(error=str(exc)))
             if parts==['api','sites']:return self.send(200,sites_response(self.server.root,REPO))
             if parts==['media','moon-color.jpg']:
                 image=self.server.root/'ui-assets/moon-color.jpg'
@@ -109,7 +115,8 @@ class Handler(BaseHTTPRequestHandler):
             static={'':'index.html','index.html':'index.html','app.js':'app.js','style.css':'style.css',
                     'terrain-map.js':'terrain-map.js','sky-timeline.js':'sky-timeline.js',
                     'moon-entry.js':'moon-entry.js','moon-entry.css':'moon-entry.css',
-                    'site-explorer.js':'site-explorer.js','site-explorer.css':'site-explorer.css'}
+                    'site-explorer.js':'site-explorer.js','site-explorer.css':'site-explorer.css',
+                    'seasonal-planner.js':'seasonal-planner.js','seasonal-planner.css':'seasonal-planner.css'}
             name=static.get('/'.join(parts))
             if name:
                 kind={'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8'}[name.rsplit('.',1)[1]]
