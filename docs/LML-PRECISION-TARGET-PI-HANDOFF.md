@@ -1,4 +1,4 @@
-# Pi handoff — v6 disk-edge area correction
+# Pi handoff — v7 reuse-only proof checks
 
 Use the current checkout on `codex/lunar-precision-target`. Source is prepared,
 not runtime-verified. Preserve unrelated files. No installation, downloads,
@@ -10,22 +10,28 @@ error plus output, and leave correction to Codex. The owner reviews results.
 From the repository root, run these sequentially using the existing `.venv`:
 
 ```bash
+PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/check_reuse_only.py
 PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/check_adaptive_bearing.py
 PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/check_disk_area.py
 PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/check_horizon_reuse.py
 PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/check_result_store.py
 ```
 
-Each must exit zero. The disk-area check now covers clipped quarter/interior/
+Each must exit zero. The reuse-only check verifies that no terrain traversal or
+new witness construction is used after the full classification cap. It also
+checks zero/one budgets, analytic fractions, wrong bearing/elevation and exact
+work debits. The disk-area check covers clipped quarter/interior/
 outside areas, reflection, refinement and early work-limit accounting. Adaptive
 checks retain the v4 proof rules. Codex has not executed these checks. The v5
-duplicate-work experiment failed and was removed; this candidate changes area
-accounting for already proved regions instead.
+duplicate-work experiment failed and was removed. V6 narrowed the width to
+0.01388282226328252 but still failed. V7 retains its area accounting and adds
+a separate cap of 4,096 reuse-only checks. Terrain visits, full classifications
+and visited-tile limits remain unchanged. No performance improvement is assumed.
 
 ## 2. One fixed sample, with an explicit acceptance exit status
 
 ```bash
-PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/profile_transition_sample.py --require-target --output data/local/lml/precision-target-v6-profile.json
+PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/profile_transition_sample.py --require-target --output data/local/lml/precision-target-v7-profile.json
 ```
 
 Uses the existing PR #9 reference's sample-a Sun at
@@ -34,10 +40,12 @@ ignored `data/local`. Exit 0 requires fraction width <=0.01; exit 2 means that
 the target was not met. In that case return the JSON metrics and stop. Do not
 call a narrower interval a passing result if width still exceeds the target.
 
-Preserve the earlier failed `precision-target-profile.json`. Return elapsed
+Preserve both earlier failed profile JSON files. Return elapsed
 seconds, lower/upper bounds, width, termination, terrain visits, attempt count,
-clipped tile count and circle-area strips used/budget. Compare with v4/v5's interval
-[0.40665914200781333, 0.4245932936659623], width 0.017934151658148993.
+clipped tile count, circle-area strips used/budget and reuse-only checks/budget.
+Confirm full classifications <=4,096, terrain visits <=32,768, reuse-only
+checks <=4,096 and visited tiles <=16,384. Compare with v6's interval
+[0.40906439489187646, 0.42294721752470166], width 0.01388282226328252.
 Record any widening; scheduling changes are not assumed monotonic.
 
 ## 3. Full one-day run, only after the fixed sample passes
@@ -65,5 +73,6 @@ be released by the finished run; never remove a live process's lock.
 Return the source commit, commands' exit statuses and compact outputs, profile path, final
 run ID if reached, verifier outputs, and fixed-sample acceptance result.
 Do not commit generated evidence or broaden this into backend/API/UI work.
-One next action after a failure: Codex corrects the measured failure on this
-branch. After passing, the owner reviews the precision milestone for integration.
+One next action after a failure: return the evidence for a work-policy/precision
+design review, rather than changing more caps. After passing, the owner reviews
+the precision milestone for integration.

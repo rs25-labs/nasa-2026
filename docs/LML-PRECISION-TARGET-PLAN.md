@@ -66,3 +66,42 @@ out of this correction.
 
 No target achievement is claimed from source inspection. The current source
 and focused checks have not been executed by Codex under the working agreement.
+
+## Pi v6 result and v7 correction
+
+Pi measured v6 at [0.40906439489187646, 0.42294721752470166], width
+0.01388282226328252: narrower, but still failing the 0.01 gate. Inner time was
+27.8807 s; wall time 28.41 s. Only 12,333 of 16,384 tiles were visited, with
+4,096/4,096 classifications and 32,768/32,768 terrain visits. Twenty-four
+clipped tiles used 6,144 of 65,536 strips. No full run/replay was reached.
+Evidence: `data/local/lml/precision-target-v6-profile.json`, retained unchanged.
+
+All 8,233 remaining UNKNOWN leaves have criterion
+`region-classification-budget`, totaling 0.0435943603515625 square image units.
+The classification guard discards them before looking up any existing evidence.
+The area accounting change did release tile work; a remaining budget guard now
+prevents using that work even for zero-traversal evidence checks.
+
+V7 retains the v6 area correction and adds up to 4,096 separately counted
+reuse-only checks after full classifications are exhausted. They recheck
+published sky certificates, original polar-circle witnesses, or geometry
+already in the bounded adaptive-circle cache. Candidate ranking is heuristic;
+outward certification still decides every accepted result. A frozen per-sample
+circle snapshot is ranked with bounded NumPy arrays, checking at most 16
+candidate circles per tile. No new circle is constructed, no terrain is
+traversed and no adaptive-bearing attempt is made in this mode. A changed
+terrain-work debit is an error.
+
+The previous limits remain 4,096 full classifications, 32,768 terrain visits,
+16,384 visited tiles, depth 10 and 65,536 area strips. The additional 4,096
+reuse-only checks are explicit extra proof-checking work, not free or disguised
+full classifications. All checks also consume the existing tile budget.
+Receipts identify reused regions and their tile IDs. Artifact replay rechecks
+their proofs/circles and verifies separate count limits and zero-node clearance.
+
+Focused checks cover reuse at zero full-classification budget, zero/one reuse
+limits, analytic half-disk bounds, cached-circle bearing/elevation rejection
+and prohibition of traversal. Pi must measure v7 using the same fixed gate.
+If this third bounded candidate also misses, stop for a work-policy/precision
+design review rather than adding another automatic cap increase. No target
+achievement or runtime improvement is claimed for v7.

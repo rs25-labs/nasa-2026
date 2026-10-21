@@ -44,8 +44,9 @@ def main():
                          clipped_tiles=sum(t['criterion']=='disk-clipped-area-lower-bound' for t in area['tiles']),
                          circle_area_strips_used=area['circle_area_strips_used'],
                          circle_area_strip_budget=area['circle_area_strip_budget'],
+                         reuse_only_regions=area['reuse_only_regions'],reuse_budget=area['reuse_budget'],
                          target_met=area['fraction_width_upper']<=.01)
-    print(json.dumps({k:v for k,v in area.items() if k not in ('tiles','region_receipts','adaptive_bearing_refinement')},indent=2))
+    print(json.dumps({k:v for k,v in area.items() if k not in ('tiles','region_receipts','adaptive_bearing_refinement','reuse_only_tiles')},indent=2))
     print(json.dumps(metrics,indent=2))
     if args.output:
         from lunar_lab.assets import write_json

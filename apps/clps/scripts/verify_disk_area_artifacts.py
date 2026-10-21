@@ -161,6 +161,13 @@ def verify(run):
                 partition(prefix+str(i),b)
         partition('',(-1.,1.,-1.,1.))
         assert sum(t['area_square'] for t in area['tiles'])==4
+        reuse_tiles=set(area.get('reuse_only_tiles',[]))
+        if area['integrator_id']=='lml-projected-disk-bounds-v7':
+            assert len(reuse_tiles)==len(area['reuse_only_tiles'])==area['reuse_only_regions']<=area['reuse_budget']<=4096
+            assert area['classified_regions']<=area['classification_budget']<=4096
+            assert area['classified_regions']+area['reuse_only_regions']<=area['visited_tiles']<=area['tile_budget']<=16384
+            prefixes={tile[:depth] for tile in leaves for depth in range(len(tile)+1)}
+            assert reuse_tiles<=prefixes
         frame=disk_basis(area)
         for rid,receipt in area['region_receipts'].items():
             prefix=rid.removeprefix('region:');box=(-1.,1.,-1.,1.)
@@ -168,14 +175,18 @@ def verify(run):
                 x0,x1,y0,y1=box;xm,ym=(x0+x1)/2,(y0+y1)/2
                 box=((x0,xm,y0,ym),(xm,x1,y0,ym),(x0,xm,ym,y1),(xm,x1,ym,y1))[int(digit)]
             d=direction_box(frame,box)
+            if receipt.get('reuse_only'):
+                assert area['integrator_id']=='lml-projected-disk-bounds-v7' and prefix in reuse_tiles
             if receipt['state']=='FULL':
                 p=proof_by_id[receipt['clearance_proof_id']]
                 assert p['clear'] and p['region_direction']==[[str(a.lo),str(a.hi)] for a in d]
+                if receipt.get('reuse_only'):
+                    assert p['visited_nodes']==0 and (p.get('reuse_of') or p.get('reuse_of_all'))
             elif receipt.get('witness_kind')=='adaptive-cell-circle':
                 from lunar_lab.adaptive_witness import certify_circle
                 checked=certify_circle(engine,d,receipt['row'],receipt['col'],
                     receipt['circle_x_m'],receipt['circle_y_m'],receipt['circle_radius_m'])
-                assert checked==receipt
+                assert checked=={key:value for key,value in receipt.items() if key!='reuse_only'}
             else:
                 cell=receipt['witness_cell_id'];r=cells[cell]
                 assert r['inner_circle_within_nominal_cap']=='True'
@@ -205,7 +216,7 @@ def verify(run):
                 if area['termination']!='whole-disk-region-proof':
                     if t['criterion']=='disk-clipped-area-lower-bound':
                         from lunar_lab.circle_area import clipped_area_lower,STRIPS_PER_TILE
-                        assert area['integrator_id']=='lml-projected-disk-bounds-v6'
+                        assert area['integrator_id'] in ('lml-projected-disk-bounds-v6','lml-projected-disk-bounds-v7')
                         assert area['circle_area_policy']=='concave-strip-lower-v1'
                         assert radial.lo<=1<radial.hi
                         assert t['area_strips']==STRIPS_PER_TILE
@@ -219,7 +230,7 @@ def verify(run):
                         amount=Interval(t['area_square'])
                     if t['state']=='FULL':visible=visible+amount
                     else:blocked=blocked+amount
-        if area['integrator_id']=='lml-projected-disk-bounds-v6':
+        if area['integrator_id'] in ('lml-projected-disk-bounds-v6','lml-projected-disk-bounds-v7'):
             assert area['circle_area_policy']=='concave-strip-lower-v1'
             assert circle_strips==area['circle_area_strips_used']<=area['circle_area_strip_budget']==65536
         if area['termination']=='whole-disk-region-proof':
