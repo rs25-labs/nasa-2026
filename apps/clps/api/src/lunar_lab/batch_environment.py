@@ -32,6 +32,7 @@ from .terrain import PolarTerrain
 from .terrain_bounds import build_sector_bounds
 from .composite_bounds import CompositeClearance, MODEL_ID as COMPOSITE_MODEL_ID
 from .global_terrain import GlobalTerrain
+from .result_store import engine_identity,make_identity,source_snapshot,lookup,publish,rebuild_index
 
 
 def parse_utc(value: str) -> datetime:
@@ -155,10 +156,37 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--offline", action="store_true")
     parser.add_argument('--global-sources', type=Path, help='Optional explicit composite-global supplement manifest')
     parser.add_argument('--max-global-download-mib', type=float, default=40.0)
+    parser.add_argument('--refresh',action='store_true',help='Recalculate and save a new result instead of reusing a match')
+    parser.add_argument('--rebuild-index',action='store_true',help='Rebuild the saved-result index and exit without calculating')
     args = parser.parse_args(argv)
 
     root = args.work_dir.resolve()
     root.mkdir(parents=True, exist_ok=True)
+    if args.rebuild_index:
+        with exclusive_workdir(root):
+            count=rebuild_index(root)
+        print(json.dumps(dict(status='complete',indexed_results=count,index=str(root/'results-index.json')),indent=2))
+        return 0
+    lookup_began=time.perf_counter()
+    request={key:getattr(args,key) for key in ('site_id','latitude_deg','longitude_deg','observer_height_m','days','step_hours','az_step_deg','max_distance_m','distance_steps')}
+    request['start_utc']=args.start
+    engine_at_start=engine_identity()
+    if not args.refresh:
+        try:
+            manifest_paths={'foundation':args.sources}
+            if args.global_sources:manifest_paths['global']=args.global_sources
+            manifest_bytes={name:path.read_bytes() for name,path in manifest_paths.items()}
+            manifests={name:hashlib.sha256(content).hexdigest() for name,content in manifest_bytes.items()}
+            specs=[json.loads(content) for content in manifest_bytes.values()]
+            identity=make_identity(request,manifests,source_snapshot(root,specs),engine_at_start)
+            cached=lookup(root,identity)
+            if cached is not None:
+                response={key:cached[key] for key in ('status','cache_hit','cache_key','report','artifacts_directory')}
+                response['lookup_wall_seconds']=time.perf_counter()-lookup_began
+                print(json.dumps(response,indent=2))
+                return 0
+        except (OSError,ValueError,KeyError,TypeError,OverflowError):
+            pass  # A miss follows the existing validated preparation path.
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
     run = root / "env-runs" / run_id
     run.mkdir(parents=True)
@@ -345,6 +373,7 @@ def main(argv: list[str] | None = None) -> int:
                 summaries.append(summarize(timeseries, body_intervals, site["id"], body))
             if intervals:
                 write_csv(run / "environment-intervals.csv", intervals)
+            write_csv(run / "environment-summaries.csv", summaries)
             write_horizon_plot(run / "horizon.png", fine, coarse, site["id"])
             write_visibility_plot(run / "environment-visibility.png", timeseries, site["id"])
 
@@ -425,6 +454,7 @@ def main(argv: list[str] | None = None) -> int:
                         "horizon-sector-bounds.csv",
                         "environment-timeseries.csv",
                         "environment-intervals.csv",
+                        "environment-summaries.csv",
                         "horizon.png",
                         "environment-visibility.png",
                         *(['composite-clearance-proofs.json'] if clearance else []),
@@ -436,9 +466,23 @@ def main(argv: list[str] | None = None) -> int:
             report["elapsed_wall_seconds"] = time.perf_counter() - began
             report["peak_process_memory_mib"] = peak_memory_mib()
             write_json(report_path, report)
+            cache_key=None
+            cache_warning=None
+            try:
+                if engine_identity()!=engine_at_start:
+                    raise ValueError('Calculation code changed during the run; result not indexed')
+                manifests={'foundation':report['source_manifest']['sha256']}
+                if global_spec is not None:manifests['global']=report['composite_source_manifest']['sha256']
+                identity=make_identity(request,manifests,{name:value['sha256'] for name,value in receipts.items()},engine_at_start)
+                cache_key=publish(root,run,identity)
+            except (OSError,ValueError,KeyError,TypeError) as exc:
+                cache_warning=str(exc)
+                print(f'Result completed, but saved-result indexing failed: {exc}',file=sys.stderr)
             print(
                 json.dumps(
-                    {"status": "complete", "report": str(report_path), "artifacts_directory": str(run)},
+                    {"status": "complete", "report": str(report_path), "artifacts_directory": str(run),
+                     "cache_hit":False,"cache_key":cache_key,"cache_saved":cache_key is not None,
+                     **({"cache_warning":cache_warning} if cache_warning else {})},
                     indent=2,
                 )
             )
