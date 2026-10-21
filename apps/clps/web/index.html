@@ -2,12 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css">
-  <script src="/terrain-map.js" defer></script><script src="/sky-timeline.js" defer></script><script src="/app.js" defer></script>
+  <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/moon-entry.css">
+  <script src="/terrain-map.js" defer></script><script src="/sky-timeline.js" defer></script><script src="/moon-entry.js" defer></script><script src="/app.js" defer></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="/">◐ <span>LUNAR MISSION LAB</span></a><span class="tag">SOUTH POLE · PLANNER</span></header>
-<main>
+<header class="topbar"><a class="brand" href="#home">◐ <span>LUNAR MISSION LAB</span></a><a class="tag" href="#planner">SOUTH POLE · PLANNER ↗</a></header>
+<section id="moon-entry" class="moon-entry" aria-labelledby="entry-title">
+  <div class="entry-stars" aria-hidden="true"></div>
+  <div id="moon-fallback" class="moon-fallback" aria-hidden="true"></div>
+  <canvas id="moon-globe" aria-hidden="true"></canvas>
+  <div id="moon-pins" aria-hidden="true"></div>
+  <div id="entry-copy" class="entry-copy">
+    <p class="eyebrow">A PLACE. A DATE. A POSSIBILITY.</p>
+    <h1 id="entry-title">Your next mission<br>starts here.</h1>
+    <p>Find your place at the lunar south pole. Discover how the terrain shapes sunlight and the view of Earth, then choose when to begin.</p>
+    <a id="explore-moon" class="entry-primary" href="#moon">Explore the Moon <span aria-hidden="true">↗</span></a>
+    <a class="entry-shortcut" href="#planner">Go straight to mission planning →</a>
+  </div>
+  <div id="journey-copy" class="journey-copy" hidden>
+    <p class="eyebrow">FROM ORBIT TO YOUR OUTPOST</p>
+    <h2 id="journey-title" tabindex="-1">A world of possibilities.</h2>
+    <p id="journey-status" role="status">Turning toward the south pole…</p>
+    <p class="caption"><span class="mint">● Draft site</span> · <span class="gold">● Saved calculation sites</span></p>
+    <div id="journey-sites" class="journey-sites" aria-label="Choose a mission site"></div>
+    <div class="journey-actions"><button id="pause-moon" type="button" aria-pressed="false">Pause journey</button><a href="#planner">Choose a site now →</a></div>
+  </div>
+  <div class="entry-foot"><span id="moon-status">Illustrative lunar view · mission planning at 90–85°S</span><a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">Moon imagery: NASA SVS ↗</a></div>
+</section>
+<main id="planner" tabindex="-1">
+  <a class="back-to-moon" href="#moon">← Back to the Moon</a>
   <div class="intro"><p class="eyebrow">FROM A PLACE TO A POSSIBILITY</p><h1>Find your window<br>on the Moon.</h1><p>Choose a landing site and date. Explore how terrain shapes sunlight and the view of Earth.</p></div>
   <div class="workspace">
     <section class="panel setup" aria-labelledby="setup-title">

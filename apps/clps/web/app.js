@@ -49,9 +49,21 @@ const terrainMap = new TerrainMap(api, (lat, lon) => {
   form.elements.latitude_deg.value = String(lat); form.elements.longitude_deg.value = String(lon);
   moveMarker();
 });
+let savedSites = [];
+const moonJourney = new MoonJourney(() => {
+  terrainMap.setSelected(Number(form.elements.latitude_deg.value), Number(form.elements.longitude_deg.value));
+  terrainMap.center(terrainMap.selected);
+  terrainMap.inspect();
+}, request => {
+  for (const key of ["site_id", "latitude_deg", "longitude_deg"]) {
+    if (request[key] !== undefined) form.elements[key].value = String(request[key]);
+  }
+  moveMarker();
+});
 function moveMarker() {
   const lat = Number(form.elements.latitude_deg.value), lon = Number(form.elements.longitude_deg.value);
   terrainMap.setSelected(lat, lon);
+  moonJourney.setSites(savedSites, { site_id:form.elements.site_id.value, latitude_deg:lat, longitude_deg:lon });
   if (displayedRequest) {
     const changed = ["latitude_deg", "longitude_deg", "observer_height_m", "days"].some(key => Number(form.elements[key].value) !== Number(displayedRequest[key]))
       || Date.parse(form.elements.start.value + "Z") !== Date.parse(displayedRequest.start_utc);
@@ -127,6 +139,7 @@ async function openResult(key) {
 async function refreshSaved() {
   try {
     const items = await api("/api/saved"); $("saved-list").replaceChildren();
+    savedSites = items; moveMarker();
     if (!items.length) $("saved-list").append(el("p", "Your completed calculations will appear here.", "caption"));
     for (const item of items) {
       const row = el("div", undefined, "saved-item"), button = el("button", "Open result ↗");

@@ -31,6 +31,12 @@ failed before exec in PROJ's macOS fork-child cleanup. The bounded
 remaining startup, fresh-result, verifier and cache/export checks before merge.
 Solver logic and the retired numerical acceptance gate are unchanged.
 
+The owner additionally requests a moonrise landing page and orbit-to-south-pole
+entry. [Moon entry source plan](LML-MOON-ENTRY-PLAN.md) adds an illustrative
+textured globe with draft/saved-site markers and a handoff to the real terrain
+picker. [Pi's visual batch](LML-MOON-ENTRY-PI-HANDOFF.md) is pending; this does
+not replace the outstanding worker-startup/fresh-result verification.
+
 ## Batch 01 — Data foundation (current handoff)
 
 - [x] Define explicit terrain/frame conventions and seven bounded asset sources.

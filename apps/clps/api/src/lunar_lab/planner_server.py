@@ -54,6 +54,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             parts=urlsplit(self.path).path.strip('/').split('/')
+            if parts==['media','moon-color.jpg']:
+                image=self.server.root/'ui-assets/moon-color.jpg'
+                if not image.is_file():return self.send(404,dict(error='Moon illustration is not cached. Terrain planning remains available.'))
+                return self.send(200,image.read_bytes(),'image/jpeg')
             if parts in (['api','terrain'],['api','terrain','site']):
                 query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
                 expected={'latitude','longitude'} if len(parts)==3 else {'x','y','span'}
@@ -101,7 +105,8 @@ class Handler(BaseHTTPRequestHandler):
                     horizon=table('horizon-profile.csv'),
                     calculation_seconds=report.get('elapsed_wall_seconds')))
             static={'':'index.html','index.html':'index.html','app.js':'app.js','style.css':'style.css',
-                    'terrain-map.js':'terrain-map.js','sky-timeline.js':'sky-timeline.js'}
+                    'terrain-map.js':'terrain-map.js','sky-timeline.js':'sky-timeline.js',
+                    'moon-entry.js':'moon-entry.js','moon-entry.css':'moon-entry.css'}
             name=static.get('/'.join(parts))
             if name:
                 kind={'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8'}[name.rsplit('.',1)[1]]
