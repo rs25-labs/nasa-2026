@@ -1,5 +1,25 @@
 # Pi handoff — candidate-site explorer and pilot cards
 
+## Resume after the reported browser parse failure
+
+Pi verified the backend/publication at `aa32bd9`, then stopped on a missing
+closing template-literal backtick in `site-explorer.js:81`. The follow-up fix
+closes that literal only. No collection/data/solver changes. In this same main
+checkout, record the new source commit, then run this bounded syntax gate:
+
+```bash
+node --check apps/clps/web/site-explorer.js
+node --check apps/clps/web/app.js
+```
+
+Require both exit zero before browser work. The already idle server reads static
+files on request; no restart is needed for this JS-only correction. Hard reload
+the page and require `typeof window.SiteExplorer === 'function'`, populated
+cards, and no parse errors. Resume original Section 3 below, then Section 4;
+retain the prior successful lightweight/API evidence. Stop at first genuine
+failure. Do not start the seasonal-planner batch until this browser milestone
+passes. Keep the frozen collector running and do not install dependencies.
+
 Use current `codex/lunar-map-sky` source commit supplied by Codex for the app.
 The ongoing collector must keep using its existing frozen `214ba7e` snapshot
 and runtime. Do not restart/stop that collector, change its source, install

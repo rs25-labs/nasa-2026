@@ -33,6 +33,12 @@ archive publication is a later deliberate update after Pi verifies completion.
 - [x] Source review plus bounded [Pi fixture/browser handoff](LML-SITE-EXPLORER-PI-HANDOFF.md); no new calculations.
 - [ ] Pi verifies actual browser/data behavior; owner reviews results.
 
+Pi at `aa32bd9`: lightweight publication and API checks passed, but browser
+testing stopped before cards loaded because `site-explorer.js:81` lacked the
+closing template-literal backtick. Source correction closes that literal;
+syntax and resumed browser checks are assigned to Pi in the handoff. No UI
+pass is claimed from the backend results. Collector/source archives untouched.
+
 Use current CSS/vanilla JS, no new dependencies or numerical changes. The
 frozen `214ba7e` collector remains unaffected. Backend edits change the main
 checkout's development fingerprint; no interactive job was active before edits.

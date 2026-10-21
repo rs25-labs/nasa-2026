@@ -78,7 +78,7 @@
       const preview=node("section",undefined,"site-preview");
       if(site.preview) {
         preview.append(node("strong",site.preview.label),node("p",`${date(site.preview.start_utc)} → ${date(site.preview.end_utc)}`,"site-period"),
-          node("p",`${site.preview.step_hours}-hour samples · ${site.preview.observer_height_m} m observer. This preview covers these dates only; it is independent of your draft mission dates.","caption"));
+          node("p",`${site.preview.step_hours}-hour samples · ${site.preview.observer_height_m} m observer. This preview covers these dates only; it is independent of your draft mission dates.`,"caption"));
         for(const condition of site.preview.conditions)preview.append(node("h4",condition.body==="SUN"?"Sunlight":"Earth-disk visibility"),node("p",condition.explanation),node("p",`Longest obstruction: ${condition.longest_obstruction_basis}.`,"caption"));
         preview.append(node("p","Visible-disk area describes geometry; it is not generated electrical power or a radio link budget.","caption"));
       } else preview.append(node("strong","Data collection in progress"),node("p","No published calculation is available for this site yet. The seasonal archive will be added after verification."));
