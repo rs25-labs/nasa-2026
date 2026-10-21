@@ -36,14 +36,24 @@ def verify(run):
     proofs=json.loads((run/'composite-clearance-proofs.json').read_text())
     proof_by_id={p['proof_id']:p for p in proofs}
     assert len(proof_by_id)==len(proofs)
+    published=set()
     for proof in proofs:
         if proof.get('proof_kind')=='projected-disk-region':
             d=tuple(Interval(a,b) for a,b in proof['region_direction'])
-            replay=engine.prove_region(d,node_budget=proof['node_budget'])
+            replay=engine.prove_region(d,node_budget=proof['node_budget'],minimum_span=proof.get('minimum_polar_span',1),
+                                      use_cache='cache_policy' in proof,legacy_wedge=proof.get('region_wedge_policy','legacy-v1')=='legacy-v1')
+            if proof.get('reuse_of'):
+                assert proof['reuse_of'] in published and proof_by_id[proof['reuse_of']]['clear']
+                assert replay.get('reuse_of')==proof['reuse_of']
+            if 'cache_policy' in proof:
+                assert replay.get('sky_wedge')==proof.get('sky_wedge')
+                assert replay['minimum_disk_up_lo']==proof['minimum_disk_up_lo']
+                engine.sky_cache.remember(dict(replay,proof_id=proof['proof_id']))
         else:
-            replay=engine.prove(proof,node_budget=proof['node_budget'])
+            replay=engine.prove(proof,node_budget=proof['node_budget'],minimum_span=proof.get('minimum_polar_span',1))
         assert replay['clear']==proof['clear'] and replay['termination']==proof['termination']
         assert replay['terminal_nodes']==proof['terminal_nodes']
+        published.add(proof['proof_id'])
     cells={r['cell_id']:r for r in table('terrain-cell-enclosures.csv')}
     witnesses={}
     east,north,up=basis(report['site_sample']['latitude_deg'],report['site_sample']['longitude_deg'])
@@ -71,6 +81,11 @@ def verify(run):
             if receipt['state']=='FULL':
                 p=proof_by_id[receipt['clearance_proof_id']]
                 assert p['clear'] and p['region_direction']==[[str(a.lo),str(a.hi)] for a in d]
+            elif receipt.get('witness_kind')=='adaptive-cell-circle':
+                from lunar_lab.adaptive_witness import certify_circle
+                checked=certify_circle(engine,d,receipt['row'],receipt['col'],
+                    receipt['circle_x_m'],receipt['circle_y_m'],receipt['circle_radius_m'])
+                assert checked==receipt
             else:
                 cell=receipt['witness_cell_id'];r=cells[cell]
                 assert r['inner_circle_within_nominal_cap']=='True'

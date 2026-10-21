@@ -25,8 +25,10 @@ Current owner-authorized execution checkpoint (2026-10-20): optional
 obstruction proofs now produce model-conditional FULL/BLOCKED results.
 Follow-on [finite-disk milestone](LML-VISIBILITY-MILESTONE.md) adds bounded
 area integration and a real PARTIAL result. Original sample-a now has Sun
-29 BLOCKED; Earth 9 FULL / 20 UNKNOWN. Precision/performance acceptance
-remains pending, so Batch 02/L03 release readiness is incomplete. The
+29 BLOCKED; Earth 9 FULL / 20 UNKNOWN. The follow-on
+[precision checkpoint](LML-PRECISION-MILESTONE.md) narrows the fixed Sun
+transition without changing the terrain model or work limits. Precision and
+performance acceptance remain pending; Batch 02/L03 readiness is incomplete. The
 owner's continuation instructions authorize bounded Codex execution and
 PR/merge delivery, superseding the older execution assignment above for
 these checkpoints. No API/UI, training or SPHEREx work is included.

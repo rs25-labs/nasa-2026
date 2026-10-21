@@ -6,7 +6,7 @@ import math
 
 from .bounded_math import Interval, PI, dot, sin_cos_degrees
 
-INTEGRATOR_ID = 'lml-projected-disk-bounds-v1'
+INTEGRATOR_ID = 'lml-projected-disk-bounds-v2'
 TILE_BUDGET = 16384
 CLASSIFICATION_BUDGET = 4096
 MAX_DEPTH = 10
@@ -147,7 +147,11 @@ class TerrainTileProver:
         self.witnesses = []
         if prepared is not None:
             self.witnesses,self.approx = prepared.witnesses,prepared.approx
+            self.outer_candidates,self.adaptive_cache=prepared.outer_candidates,prepared.adaptive_cache
+            self.outer_array=prepared.outer_array
             return
+        self.outer_candidates=[]
+        self.adaptive_cache={}
         from .terrain_bounds import MODEL_ID
         for row in cell_evidence:
             if (row['model_id']!=MODEL_ID or not row['inner_circle_within_nominal_cap']
@@ -157,10 +161,15 @@ class TerrainTileProver:
             k = Interval(row['inner_k_lo'],row['inner_k_hi'])
             A,E,N = (dot(v,b) for b in (clearance.up,clearance.east,clearance.north))
             self.witnesses.append((row['cell_id'],row['inner_cap_elevation_lower_deg'],v,k,A,E,N))
+            ov=tuple(Interval(row[f'outer_{name}_lo'],row[f'outer_{name}_hi']) for name in ('vx','vy','vz'))
+            ok=Interval(row['outer_k_lo'],row['outer_k_hi'])
+            oa,oe,on=(dot(ov,b).midpoint_float() for b in (clearance.up,clearance.east,clearance.north))
+            self.outer_candidates.append((row['inner_cap_elevation_lower_deg'],oa,oe,on,ok.midpoint_float(),row['cell_id']))
         # Float arrays propose opportunities only. Every accepted witness
         # is independently checked with outward intervals below.
         self.approx = np.array([[w[1],w[4].midpoint_float(),w[5].midpoint_float(),
                                  w[6].midpoint_float(),w[3].midpoint_float()] for w in self.witnesses])
+        self.outer_array=np.array([w[:5] for w in self.outer_candidates])
 
     def classify(self,direction,tile_id):
         import numpy as np
@@ -182,13 +191,25 @@ class TerrainTileProver:
                 if a.lo>0 and b.lo>0 and (a.square()+b.square()).lo>threshold.square().hi:
                     return dict(state='BLOCKED',evidence_id='polar-inner-cap:'+cell,witness_cell_id=cell,
                                 elevation_lower_deg=lower,direction=[[str(d.lo),str(d.hi)] for d in direction])
-        if self.remaining <= 0:
-            return dict(state='UNKNOWN',evidence_id='terrain-node-budget')
-        proof = self.clearance.prove_region(direction,node_budget=min(512,self.remaining))
+        from .adaptive_witness import propose_witness
+        if self.outer_candidates and horizontal.lo>0:
+            az=math.atan2(east.midpoint_float(),north.midpoint_float())
+            low,A,E,N,k=self.outer_array.T
+            B=E*math.sin(az)+N*math.cos(az)
+            candidates=np.flatnonzero((A>0)&(B>0)&(A*A+B*B>k*k))
+            candidates=sorted(candidates,key=lambda i:self.outer_candidates[i][0],reverse=True)[:8]
+            for index in candidates:
+                row,col=map(int,self.outer_candidates[index][5].split(':'))
+                blocked=propose_witness(self.clearance,direction,f'{row}:{row+1}:{col}:{col+1}',self.adaptive_cache)
+                if blocked is not None:return blocked
+        proof = self.clearance.prove_region(direction,node_budget=min(512,max(0,self.remaining)))
         self.remaining -= proof['visited_nodes']
         if proof['clear']:
             proof_id = f'region-clearance-{len(self.clearance.proofs)}'
             proof.update(proof_id=proof_id,tile_id=tile_id,proof_kind='projected-disk-region')
             self.clearance.proofs.append(proof)
+            self.clearance.sky_cache.remember(proof)
             return dict(state='FULL',evidence_id=proof_id,clearance_proof_id=proof_id)
+        blocked=propose_witness(self.clearance,direction,proof.get('unresolved_node'),self.adaptive_cache)
+        if blocked is not None:return blocked
         return dict(state='UNKNOWN',evidence_id=proof['termination'])
