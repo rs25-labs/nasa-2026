@@ -39,6 +39,14 @@ textured globe with draft/saved-site markers and a handoff to the real terrain
 picker. [Pi's visual batch](LML-MOON-ENTRY-PI-HANDOFF.md) is pending. It reuses
 the verified saved result and requests no repeated calculations or startup tests.
 
+The owner approved a hybrid candidate-site catalog and seasonal data archive.
+[Site atlas plan](LML-SITE-ATLAS-PLAN.md) supplies 20 sourced research candidates
+plus 30 explicitly exploratory neighbors, a private resumable hourly collection,
+and reusable seasonal/mission-window CSV summaries. The bounded
+[Pi pilot](LML-SITE-ATLAS-PI-HANDOFF.md) checks all 50 terrain points and collects
+three sites over two days before the long 2026–2028 archive. Calendar, date
+search and comparison UI follow verified data; no database or solver refinement.
+
 ## Batch 01 — Data foundation (current handoff)
 
 - [x] Define explicit terrain/frame conventions and seven bounded asset sources.
