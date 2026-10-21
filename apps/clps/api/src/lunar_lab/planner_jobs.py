@@ -14,6 +14,18 @@ from .assets import write_json
 ACTIVE={'queued','running','cancelling'}
 
 
+def spawn_worker(command,repo,env,log):
+    if sys.platform=='darwin':
+        # CPython 3.11 uses posix_spawn only without cwd, close_fds or setsid.
+        # fork invokes PROJ's child hooks after map use and crashes before exec
+        # on macOS. Move cwd/session setup into the freshly exec'd worker.
+        # Python-created server/log/socket descriptors are non-inheritable;
+        # close_fds=False relies on those defaults for nonstandard descriptors.
+        env=dict(env);env['LML_WORKER_REPO']=str(repo)
+        return subprocess.Popen(command,env=env,stdout=log,stderr=subprocess.STDOUT,close_fds=False)
+    return subprocess.Popen(command,cwd=repo,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+
+
 class Jobs:
     def __init__(self,root,repo):
         self.root=Path(root).resolve();self.repo=Path(repo).resolve()
@@ -87,7 +99,7 @@ class Jobs:
                 with self.lock:
                     if record['state']=='cancelling':
                         record.update(state='cancelled',finished_at=time.time());self._save(record);return
-                    self.process=subprocess.Popen(command,cwd=self.repo,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+                    self.process=spawn_worker(command,self.repo,env,log)
                 code=self.process.wait()
             with log_path.open('rb') as log:
                 log.seek(0,2);size=log.tell();log.seek(max(0,size-65536));output=log.read().decode('utf-8',errors='replace')

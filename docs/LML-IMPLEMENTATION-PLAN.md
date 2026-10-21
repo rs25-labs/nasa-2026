@@ -25,8 +25,11 @@ recommended slice is terrain map and synchronized sky/timeline interaction.
 The owner approved that next slice. [Map/sky source](LML-MAP-SKY-PLAN.md) now adds
 an offline LOLA terrain viewport and discrete sample controls linking the saved
 sky, interval cursors and sample table. The [map/sky Pi handoff](LML-MAP-SKY-PI-HANDOFF.md)
-is pending; no runtime/visual verification is claimed yet. Solver logic and
-the retired numerical acceptance gate are unchanged.
+passed map and saved-sample synchronization checks on `2c3c30a`. A fresh job
+failed before exec in PROJ's macOS fork-child cleanup. The bounded
+[spawn correction/retry handoff](LML-MAP-SPAWN-PI-HANDOFF.md) now covers the
+remaining startup, fresh-result, verifier and cache/export checks before merge.
+Solver logic and the retired numerical acceptance gate are unchanged.
 
 ## Batch 01 — Data foundation (current handoff)
 

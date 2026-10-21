@@ -1,4 +1,5 @@
 """Calculation entry point with explicit graceful cancellation signals."""
+import os
 import signal
 
 
@@ -9,9 +10,18 @@ def install_cancellation_handlers():
     signal.signal(signal.SIGTERM,signal.default_int_handler)
 
 
-def main():
+def initialize_worker():
     install_cancellation_handlers()
+    repo=os.environ.pop('LML_WORKER_REPO',None)
+    if repo is not None:
+        # macOS launch uses posix_spawn without pre-exec Python/native hooks.
+        os.setsid()
+        os.chdir(repo)
+
+
+def main():
     try:
+        initialize_worker()
         from .batch_environment import main as calculate
         return calculate()
     except KeyboardInterrupt:

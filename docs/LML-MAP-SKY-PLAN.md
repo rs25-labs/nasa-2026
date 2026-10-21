@@ -32,3 +32,10 @@ synchronization, then one bounded new-site calculation; no precision target.
 - [x] Add sky/time controls with discrete playback and linked intervals/table.
 - [x] Document the [Pi batch](LML-MAP-SKY-PI-HANDOFF.md); execution/visual QA belongs to Pi/owner.
 - [ ] Pi verifies the running app; owner reviews before integration.
+
+Pi verified sections 1–3 on `2c3c30a`: real map/projection, desktop/phone,
+exact saved-sample synchronization and discrete playback all passed. The first
+fresh calculation crashed before exec (-11, empty log); macOS identifies PROJ's
+fork-child cleanup. A macOS spawn-path correction is supplied, pending the
+bounded [startup/retry handoff](LML-MAP-SPAWN-PI-HANDOFF.md). The milestone is
+not yet ready to merge; no numerical refinement is needed.
