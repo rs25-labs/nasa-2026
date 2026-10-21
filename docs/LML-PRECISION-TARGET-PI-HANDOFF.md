@@ -1,5 +1,8 @@
 # Pi handoff — v7 reuse-only proof checks
 
+Active successor: [v8 two-stage handoff](LML-TWO-STAGE-PI-HANDOFF.md), prepared
+after the owner approved the design-review recommendation.
+
 **Completed with failed acceptance:** Pi ran the fixed sample on `b1f89f4`;
 width 0.010592929572963818 exceeded 0.01. Do not rerun this handoff automatically
 or continue to step 3. The next action is the

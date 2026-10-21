@@ -108,7 +108,8 @@ def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bou
     sectors = prepare_sectors(sector_bounds or [])
     area_prepared = None
     if clearance is not None and cell_evidence is not None:
-        from .disk_area import TerrainTileProver,integrate_disk,INTEGRATOR_ID
+        from .disk_area import TerrainTileProver,INTEGRATOR_ID
+        from .disk_refinement import integrate_refined_disk
         area_prepared = TerrainTileProver(cell_evidence,clearance)
     for row in geometry_rows:
         horizon = horizon_at_azimuth(profiles, row["azimuth_deg"])
@@ -148,7 +149,7 @@ def build_timeseries(geometry_rows: list[dict], profiles: list[dict], sector_bou
                     prover = TerrainTileProver([],clearance,prepared=area_prepared)
                     # Diagnostic elevation proposes certificate thresholds only.
                     # Complete outward terrain proofs still decide visibility.
-                    area = integrate_disk(dict(row,horizon_elevation_deg=horizon['horizon_elevation_deg']),prover)
+                    area = integrate_refined_disk(dict(row,horizon_elevation_deg=horizon['horizon_elevation_deg']),prover)
                     area_id = f'disk-area-{len(clearance.area_proofs)}'
                     area.update(proof_id=area_id,utc=row['utc'],body=row['body'],
                                 azimuth_deg=row['azimuth_deg'],center_elevation_deg=row['center_elevation_deg'],

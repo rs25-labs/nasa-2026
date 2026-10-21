@@ -16,6 +16,50 @@ from lunar_lab.global_terrain import GlobalTerrain
 from lunar_lab.terrain import PolarTerrain
 
 
+def continuation_partitions(area):
+    """Validate continuation lineage and return initial/final replay inputs."""
+    if area['integrator_id']!='lml-projected-disk-bounds-v8':return [area]
+    assert area['refinement_policy']=='unresolved-second-pass-v1'
+    assert area['disk_geometry']=={key:float(area[key]) for key in ('azimuth_deg','center_elevation_deg','angular_radius_deg')}
+    stages=area['refinement_stages']
+    assert 1<=len(stages)<=2
+    keys=('visited_tiles','tile_budget','classified_regions','classification_budget',
+          'reuse_only_regions','reuse_budget','terrain_visited_nodes','terrain_node_budget','circle_area_strips_used')
+    for key in keys:assert sum(s[key] for s in stages)==area[key]
+    assert [t for s in stages for t in s['reuse_only_tiles']]==area['reuse_only_tiles']
+    for index,stage in enumerate(stages):
+        assert stage['pass_kind']==('initial' if index==0 else 'refined')
+        limits=(16384,4096,4096,32768,10) if index==0 else (8192,2048,2048,8192,12)
+        for actual,budget,limit in zip(('visited_tiles','classified_regions','reuse_only_regions','terrain_visited_nodes'),
+                                      ('tile_budget','classification_budget','reuse_budget','terrain_node_budget'),limits):
+            assert 0<=stage[actual]<=stage[budget]<=limit
+        assert stage['max_depth']<=limits[-1]
+        assert 0<=stage['circle_area_strips_used']<=65536
+        assert len(set(stage['reuse_only_tiles']))==len(stage['reuse_only_tiles'])==stage['reuse_only_regions']
+        assert max(stage['classified_regions'],stage['reuse_only_regions'])<=stage['visited_tiles']
+        assert stage['classified_regions']+stage['reuse_only_regions']<=(index+1)*stage['visited_tiles']
+    assert stages[-1]['fraction_width_upper']==area['fraction_width_upper']
+    if len(stages)==1:
+        assert area['pass_kind']=='initial' and 'initial_pass' not in area
+        assert area['fraction_width_upper']<=area['tolerance']
+        return [area]
+    assert area['pass_kind']=='refined'
+    first=dict(area['initial_pass'])
+    assert first['pass_kind']=='initial' and first['refinement_stages']==stages[:1]
+    assert first['disk_geometry']==area['disk_geometry']
+    assert first['fraction_width_upper']>first['tolerance']==area['tolerance']
+    assert first['visible_fraction_lower']<=area['visible_fraction_lower']
+    assert first['visible_fraction_upper']>=area['visible_fraction_upper']
+    assert first['horizon_preparation']==area['horizon_preparation']
+    assert first['adaptive_bearing_refinement']['attempts']==area['adaptive_bearing_refinement']['attempts'][:len(first['adaptive_bearing_refinement']['attempts'])]
+    final_leaves={t['tile_id']:t for t in area['tiles']}
+    for leaf in first['tiles']:
+        if leaf['state']!='UNKNOWN':assert final_leaves[leaf['tile_id']]==leaf
+    first['region_receipts']={key:area['region_receipts'][key] for key in first['region_receipt_ids']}
+    for key in ('azimuth_deg','center_elevation_deg','angular_radius_deg'):first[key]=area[key]
+    return [first,area]
+
+
 def verify(run):
     def table(name):
         with (run/name).open() as f:
@@ -93,7 +137,10 @@ def verify(run):
             x0,x1,y0,y1=box;xm,ym=(x0+x1)/2,(y0+y1)/2
             box=((x0,xm,y0,ym),(xm,x1,y0,ym),(x0,xm,ym,y1),(xm,x1,ym,y1))[int(digit)]
         return box
-    for area in areas:
+    partitions=[part for area in areas for part in continuation_partitions(area)]
+    for area in partitions:
+        v8=area['integrator_id']=='lml-projected-disk-bounds-v8'
+        refined=v8 and area.get('pass_kind')=='refined'
         frame=disk_basis(area)
         adaptive=area.get('adaptive_bearing_refinement')
         adaptive_visits=0
@@ -130,7 +177,7 @@ def verify(run):
                 assert proof['refinement_direction']==[[str(a.lo),str(a.hi)] for a in d]
         prep=area.get('horizon_preparation')
         if prep:
-            assert prep['visited_nodes']<=area['terrain_visited_nodes']<=area['terrain_node_budget']<=32768
+            assert prep['visited_nodes']<=area['terrain_visited_nodes']<=area['terrain_node_budget']<=(40960 if refined else 32768)
             assert prep['node_budget']<=min(8192,area['terrain_node_budget']//2)
             attempts=[proof_by_id[p] for p in prep['attempts']]
             assert len(attempts)<=64 and len(set(prep['attempts']))==len(attempts)
@@ -162,10 +209,12 @@ def verify(run):
         partition('',(-1.,1.,-1.,1.))
         assert sum(t['area_square'] for t in area['tiles'])==4
         reuse_tiles=set(area.get('reuse_only_tiles',[]))
-        if area['integrator_id']=='lml-projected-disk-bounds-v7':
-            assert len(reuse_tiles)==len(area['reuse_only_tiles'])==area['reuse_only_regions']<=area['reuse_budget']<=4096
-            assert area['classified_regions']<=area['classification_budget']<=4096
-            assert area['classified_regions']+area['reuse_only_regions']<=area['visited_tiles']<=area['tile_budget']<=16384
+        if area['integrator_id']=='lml-projected-disk-bounds-v7' or v8:
+            assert len(area['reuse_only_tiles'])==area['reuse_only_regions']<=area['reuse_budget']<=(6144 if refined else 4096)
+            if not refined:assert len(reuse_tiles)==len(area['reuse_only_tiles'])
+            assert area['classified_regions']<=area['classification_budget']<=(6144 if refined else 4096)
+            assert max(area['classified_regions'],area['reuse_only_regions'])<=area['visited_tiles']<=area['tile_budget']<=(24576 if refined else 16384)
+            if not refined:assert area['classified_regions']+area['reuse_only_regions']<=area['visited_tiles']
             prefixes={tile[:depth] for tile in leaves for depth in range(len(tile)+1)}
             assert reuse_tiles<=prefixes
         frame=disk_basis(area)
@@ -176,7 +225,7 @@ def verify(run):
                 box=((x0,xm,y0,ym),(xm,x1,y0,ym),(x0,xm,ym,y1),(xm,x1,ym,y1))[int(digit)]
             d=direction_box(frame,box)
             if receipt.get('reuse_only'):
-                assert area['integrator_id']=='lml-projected-disk-bounds-v7' and prefix in reuse_tiles
+                assert area['integrator_id'] in ('lml-projected-disk-bounds-v7','lml-projected-disk-bounds-v8') and prefix in reuse_tiles
             if receipt['state']=='FULL':
                 p=proof_by_id[receipt['clearance_proof_id']]
                 assert p['clear'] and p['region_direction']==[[str(a.lo),str(a.hi)] for a in d]
@@ -216,7 +265,7 @@ def verify(run):
                 if area['termination']!='whole-disk-region-proof':
                     if t['criterion']=='disk-clipped-area-lower-bound':
                         from lunar_lab.circle_area import clipped_area_lower,STRIPS_PER_TILE
-                        assert area['integrator_id'] in ('lml-projected-disk-bounds-v6','lml-projected-disk-bounds-v7')
+                        assert area['integrator_id'] in ('lml-projected-disk-bounds-v6','lml-projected-disk-bounds-v7','lml-projected-disk-bounds-v8')
                         assert area['circle_area_policy']=='concave-strip-lower-v1'
                         assert radial.lo<=1<radial.hi
                         assert t['area_strips']==STRIPS_PER_TILE
@@ -230,7 +279,7 @@ def verify(run):
                         amount=Interval(t['area_square'])
                     if t['state']=='FULL':visible=visible+amount
                     else:blocked=blocked+amount
-        if area['integrator_id'] in ('lml-projected-disk-bounds-v6','lml-projected-disk-bounds-v7'):
+        if area['integrator_id'] in ('lml-projected-disk-bounds-v6','lml-projected-disk-bounds-v7','lml-projected-disk-bounds-v8'):
             assert area['circle_area_policy']=='concave-strip-lower-v1'
             assert circle_strips==area['circle_area_strips_used']<=area['circle_area_strip_budget']==65536
         if area['termination']=='whole-disk-region-proof':
@@ -258,7 +307,7 @@ def verify(run):
         assert s['exact_fraction_hours']<=s['known_hours']
         assert sum(float(i['duration_hours']) for i in table('environment-intervals.csv') if i['body']==s['body'])==s['total_hours']
     assert not (root/'.environment.lock').exists() and not (root/'.foundation.lock').exists()
-    print(f"PASS: {run.name}: {len(proofs)} clearance replays, {len(areas)} complete disk partitions, area witnesses/fractions, source hashes, durations and released locks")
+    print(f"PASS: {run.name}: {len(proofs)} clearance replays, {len(partitions)} complete disk partitions, area witnesses/fractions, source hashes, durations and released locks")
 
 
 if __name__=='__main__':

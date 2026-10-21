@@ -18,8 +18,10 @@ identical bounds, target not met. That experiment is removed. Pi then measured
 v6 disk-edge accounting: width 0.01388282226328252, narrower but still failing.
 Pi measured v7 at width 0.010592929572963818: narrower but still failing, with
 higher sample runtime. Three bounded candidates have now missed the target.
-The next action is the [precision design review](LML-PRECISION-DESIGN-REVIEW.md),
-not another automatic run or limit increase. This branch is not ready to merge.
+The owner reviewed the [precision design review](LML-PRECISION-DESIGN-REVIEW.md)
+and approved proceeding with a bounded second stage. V8 source now awaits the
+[two-stage Pi handoff](LML-TWO-STAGE-PI-HANDOFF.md), including precision and time
+gates. This branch remains unverified and is not ready to merge.
 
 ## Remaining deliverables, in dependency order
 

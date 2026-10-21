@@ -70,3 +70,10 @@ unreviewed cap increase is not the next step.
 Do not merge v7, lower the acceptance standard, or claim backend/UI readiness.
 One next action: review the proposed two-stage refinement design and latency
 tradeoff with the owner before producing another algorithm candidate.
+
+## Owner continuation
+
+The owner approved proceeding. The [two-stage implementation plan](LML-TWO-STAGE-REFINEMENT-PLAN.md)
+now defines explicit extra work and experimental latency allowances. Source v8
+is prepared for the [new Pi handoff](LML-TWO-STAGE-PI-HANDOFF.md), not yet runtime
+verified. Historical failures above remain unchanged; acceptance is still open.
