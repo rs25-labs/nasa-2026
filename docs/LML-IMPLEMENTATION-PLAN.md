@@ -30,6 +30,9 @@ area integration and a real PARTIAL result. Original sample-a now has Sun
 transition without changing the terrain model or work limits. The next
 [bearing-certificate milestone](LML-HORIZON-REUSE-MILESTONE.md) reduces the
 fixed transition width and one-day runtime, with remaining tradeoffs recorded.
+[Adaptive bearing refinement](LML-ADAPTIVE-BEARING-MILESTONE.md) is now
+implemented and verified; it further narrows the fixed transition to 1.79
+percentage points at a higher runtime. The 1% acceptance target remains open.
 Precision and
 performance acceptance remain pending; Batch 02/L03 readiness is incomplete. The
 owner's continuation instructions authorize bounded Codex execution and

@@ -43,15 +43,35 @@ def verify(run):
                                       Interval(proof['minimum_disk_up_lo']),node_budget=proof['node_budget'])
             assert replay['sky_wedge']==proof['sky_wedge']
             assert replay['minimum_disk_up_lo']==proof['minimum_disk_up_lo']
-            assert sin_cos_degrees(proof['proposed_elevation_deg'])[0].lo==Interval(proof['minimum_disk_up_lo']).lo
+            if proof.get('threshold_origin')=='tile-up-v1':
+                d=tuple(Interval(a,b) for a,b in proof['refinement_direction'])
+                parent_id=proof['refinement_parent']
+                assert parent_id in published
+                parent=proof_by_id[parent_id]
+                assert parent['clear'] and parent['proof_kind']=='bearing-horizon-wedge'
+                assert parent['wedge_start_deg']<=proof['wedge_start_deg']<proof['wedge_end_deg']<=parent['wedge_end_deg']
+                assert Interval(proof['minimum_disk_up_lo']).lo==d[2].lo<Interval(parent['minimum_disk_up_lo']).lo
+                assert all(float(proof[k]*128).is_integer() for k in ('wedge_start_deg','wedge_end_deg'))
+                from lunar_lab.bearing_horizon import wedge_normals
+                assert all(dot(n,d).lo>0 for n in wedge_normals(proof['wedge_start_deg'],proof['wedge_end_deg']))
+                from lunar_lab.adaptive_witness import certify_circle
+                w=proof['obstruction_floor_witness']
+                checked=certify_circle(engine,(d[0],d[1],Interval(-1)),w['row'],w['col'],w['circle_x_m'],w['circle_y_m'],w['circle_radius_m'])
+                assert checked==w and Interval(w['elevation_sine_lower_lo']).lo==Interval(proof['refinement_floor']).lo<d[2].lo
+            else:
+                assert sin_cos_degrees(proof['proposed_elevation_deg'])[0].lo==Interval(proof['minimum_disk_up_lo']).lo
             engine.sky_cache.remember(dict(replay,proof_id=proof['proof_id']))
         elif proof.get('proof_kind')=='projected-disk-region':
             d=tuple(Interval(a,b) for a,b in proof['region_direction'])
             replay=engine.prove_region(d,node_budget=proof['node_budget'],minimum_span=proof.get('minimum_polar_span',1),
-                                      use_cache='cache_policy' in proof,legacy_wedge=proof.get('region_wedge_policy','legacy-v1')=='legacy-v1')
+                                      use_cache='cache_policy' in proof,use_union=proof.get('cache_policy')=='sky-certificate-v2',legacy_wedge=proof.get('region_wedge_policy','legacy-v1')=='legacy-v1')
             if proof.get('reuse_of'):
                 assert proof['reuse_of'] in published and proof_by_id[proof['reuse_of']]['clear']
                 assert replay.get('reuse_of')==proof['reuse_of']
+            if proof.get('reuse_of_all'):
+                assert len(proof['reuse_of_all'])>=2
+                assert all(p in published and proof_by_id[p]['clear'] for p in proof['reuse_of_all'])
+                assert replay.get('reuse_of_all')==proof['reuse_of_all']
             if 'cache_policy' in proof:
                 assert replay.get('sky_wedge')==proof.get('sky_wedge')
                 assert replay['minimum_disk_up_lo']==proof['minimum_disk_up_lo']
@@ -66,7 +86,26 @@ def verify(run):
     witnesses={}
     east,north,up=basis(report['site_sample']['latitude_deg'],report['site_sample']['longitude_deg'])
     areas=json.loads((run/'projected-disk-area-proofs.json').read_text())
+    def tile_box(prefix):
+        box=(-1.,1.,-1.,1.)
+        for digit in prefix:
+            assert digit in '0123'
+            x0,x1,y0,y1=box;xm,ym=(x0+x1)/2,(y0+y1)/2
+            box=((x0,xm,y0,ym),(xm,x1,y0,ym),(x0,xm,ym,y1),(xm,x1,ym,y1))[int(digit)]
+        return box
     for area in areas:
+        frame=disk_basis(area)
+        adaptive=area.get('adaptive_bearing_refinement')
+        adaptive_visits=0
+        if adaptive:
+            attempts=[proof_by_id[p] for p in adaptive['attempts']]
+            assert len(set(adaptive['attempts']))==len(attempts)<=adaptive['attempt_limit']<=128
+            assert all(p['threshold_origin']=='tile-up-v1' and p['node_budget']<=512 for p in attempts)
+            adaptive_visits=sum(p['visited_nodes'] for p in attempts)
+            assert adaptive_visits==adaptive['visited_nodes']
+            for proof in attempts:
+                d=direction_box(frame,tile_box(proof['refinement_tile_id']))
+                assert proof['refinement_direction']==[[str(a.lo),str(a.hi)] for a in d]
         prep=area.get('horizon_preparation')
         if prep:
             assert prep['visited_nodes']<=area['terrain_visited_nodes']<=area['terrain_node_budget']<=32768
@@ -83,7 +122,11 @@ def verify(run):
                 if 'bearing_bins' in prep:assert prep['coverage_complete']
                 assert any(p['clear'] for p in attempts)
                 assert area['terrain_visited_nodes']==prep['visited_nodes']
-            else:assert prep['fallback_policy']=='bounded-region-traversal'
+            elif prep['fallback_policy']=='adaptive-bearing-refinement':
+                assert prep['coverage_complete'] and adaptive is not None
+                assert area['terrain_visited_nodes']==prep['visited_nodes']+adaptive_visits
+            else:
+                assert prep['fallback_policy']=='bounded-region-traversal' and adaptive_visits==0
         leaves={t['tile_id']:t for t in area['tiles']}
         assert len(leaves)==len(area['tiles'])
         def partition(prefix,box):

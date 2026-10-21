@@ -41,7 +41,7 @@ def certify_geometry(geometry,direction):
     sector=None
     if not (A.lo>0 and B.lo>0 and (A.square()+B.square()).lo>k.square().hi):
         from .bearing_horizon import bearing_wedge
-        from .bounded_math import sin_cos_degrees
+        from .terrain_bounds import trig as sin_cos_degrees
         sector=bearing_wedge(direction)
         if sector is None:return None
         endpoints=[E*sin_cos_degrees(a%360)[0]+N*sin_cos_degrees(a%360)[1] for a in sector]
@@ -82,7 +82,9 @@ def propose_witness(clearance,direction,node_id,cache=None):
     distance=math.hypot((col-t.col_offset)*t.scale-ox,(t.row_offset-row)*t.scale-oy)
     requested=2**math.ceil(math.log2(max(.25,2*distance*math.radians(spread))))
     key=(row,col,tick,requested)
-    if cache is not None and key in cache:return certify_geometry(cache[key],direction)
+    if cache is not None and key in cache:
+        geometry=cache.pop(key);cache[key]=geometry
+        return certify_geometry(geometry,direction)
     az=math.radians(tick/10000)
     m=[e.midpoint_float()*math.cos(az)-n.midpoint_float()*math.sin(az)
        for e,n in zip(clearance.east,clearance.north)]
@@ -97,6 +99,39 @@ def propose_witness(clearance,direction,node_id,cache=None):
     margin=min(x-float(xmin.hi),float(xmax.lo)-x,y-float(ymin.hi),float(ymax.lo)-y)
     radius=min(requested,margin/2)
     if radius<=1e-6:return None
-    geometry=circle_geometry(clearance,row,col,x,y,radius)
-    if cache is not None and len(cache)<4096:cache[key]=geometry
+    # Retain the former center proposal. Edge intersections may give a
+    # stronger height along the same bearing without changing source heights.
+    proposals=[(x,y,radius)]
+    inset=requested+max(1e-5,requested*1e-6)
+    bounds=(float(xmin.hi)+inset,float(xmax.lo)-inset,
+            float(ymin.hi)+inset,float(ymax.lo)-inset)
+    if bounds[0]<bounds[1] and bounds[2]<bounds[3]:
+        edges=[]
+        for axis in (0,1):
+            for fixed in bounds[axis*2:axis*2+2]:
+                point=[x,y];point[axis]=fixed
+                for _ in range(3):
+                    px,py=point
+                    F=m[2]*(px*px+py*py-4*R*R)+4*R*(m[0]*py+m[1]*px)
+                    derivative=2*m[2]*point[1-axis]+4*R*m[axis]
+                    if derivative==0:break
+                    point[1-axis]-=F/derivative
+                px,py=point
+                if bounds[0]<=px<=bounds[1] and bounds[2]<=py<=bounds[3]:
+                    q=px*px+py*py
+                    normal=(4*R*py/(4*R*R+q),4*R*px/(4*R*R+q),(q-4*R*R)/(q+4*R*R))
+                    C=max(-1.,min(1.,sum(a*b for a,b in zip(normal,up))))
+                    r=t.radius+int(t.raw[row,col])*t.factor
+                    score=math.atan2(r*C-clearance.observer.midpoint_float(),r*math.sqrt(max(0.,1-C*C)))
+                    edges.append((score,px,py,requested))
+        proposals.extend((px,py,rad) for _,px,py,rad in sorted(edges,reverse=True)[:2])
+    geometry=None
+    probe=(direction[0],direction[1],Interval(-1))
+    for px,py,rad in proposals:
+        candidate=circle_geometry(clearance,row,col,px,py,rad)
+        if candidate is not None and certify_geometry(candidate,probe) is not None:
+            if geometry is None or candidate['lower']>geometry['lower']:geometry=candidate
+    if cache is not None:
+        if len(cache)>=4096:cache.pop(next(iter(cache)))
+        cache[key]=geometry
     return certify_geometry(geometry,direction)
