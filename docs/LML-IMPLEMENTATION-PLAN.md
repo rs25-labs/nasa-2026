@@ -17,8 +17,10 @@ background-job API and browser UI: site/date input, calculations, saved results,
 intervals, sample bounds and exports. Pi launches and verifies it using the
 [app handoff](LML-PLANNER-PI-HANDOFF.md). No database or new runtime dependency.
 Pi has now verified the main app flow, evidence replay, exports and cache reuse;
-the app was left running. Two defects (cancel and invisible submission errors)
-have source corrections awaiting the [focused fix handoff](LML-PLANNER-FIXES-PI-HANDOFF.md).
+the app was left running. Pi also verified both corrections (cancel and invisible
+submission errors) on `28387ec`. The [first planner milestone](LML-PLANNER-MILESTONE.md)
+is verified. Stop here for the owner's app stocktake; the next
+recommended slice is terrain map and synchronized sky/timeline interaction.
 
 ## Batch 01 — Data foundation (current handoff)
 

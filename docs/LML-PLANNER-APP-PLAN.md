@@ -34,7 +34,9 @@ usable planner review. Avoid claiming the full PRD or backend is complete.
 Pi reports the initial app slice completed real calculations, evidence replay,
 exports, saved reopen and cache hits. Measured cold run was about 204 seconds /
 445 MiB, with cache hits 0.43–0.44 seconds. Full findings are in
-[Pi's handoff](LML-PLANNER-CANCEL-CODEX-HANDOFF.md). Two defects remain: cancel
+[Pi's handoff](LML-PLANNER-CANCEL-CODEX-HANDOFF.md) identified two defects: cancel
 did not interrupt the worker and rejected submissions were not visible in the
-UI. Corrections are prepared for the [focused fix handoff](LML-PLANNER-FIXES-PI-HANDOFF.md);
-their runtime verification remains pending. No new numerical acceptance gate.
+UI. Pi now reports the [focused fix handoff](LML-PLANNER-FIXES-PI-HANDOFF.md)
+passed on `28387ec`: real cancellation in 2.2 s with locks released, visible
+validation/422/409 messages, and saved/export smoke checks. See the
+[verified milestone](LML-PLANNER-MILESTONE.md). No new numerical acceptance gate.

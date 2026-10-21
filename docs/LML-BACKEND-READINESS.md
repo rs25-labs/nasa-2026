@@ -22,16 +22,17 @@ higher sample runtime. Three bounded candidates have now missed the target.
 V8 narrowed the width to 0.010344217526156609 at 51.1845 seconds for the fixed
 sample. The owner accepts this as sufficient to move on and retires that width
 gate. This is not relabeled as a 0.01 benchmark pass. The current work is the
-[planner app handoff](LML-PLANNER-PI-HANDOFF.md); functional/evidence checks remain
-pending, rather than further numerical optimization.
+[first verified planner milestone](LML-PLANNER-MILESTONE.md). Pi completed the
+app/evidence checks and both targeted defect corrections; numerical optimization
+is not the next task.
 
 ## Remaining deliverables, in dependency order
 
 | Milestone | Required backend behavior | Acceptance evidence |
 | --- | --- | --- |
-| Environment integrity | Unchanged proof rules, actual per-sample bounds, UNKNOWN states and published work limits; no fixed width gate | One completed app calculation and evidence replay, observed runtime/memory |
+| Environment integrity | Actual bounds, UNKNOWN states and published work limits; no fixed width gate | Pi completed the app calculation and evidence replay; observed about 204 s / 445 MiB |
 | Planning calculations | Distinct Earth-center visibility for communications; supplied darkness/Earth/simultaneous-window constraints; consistent metrics, up to three scenario comparisons and up to 31 daily-start candidates | A bounded real-data comparison/search with independent duration/constraint checks, explicit indeterminate outcomes and immutable result references |
-| Planner service and first UI | Inputs, file-backed results, one background job, state/elapsed time, saved reopen and exports verified by Pi; cancel and visible submission errors have corrections pending | Focused fix handoff verifies the two remaining defects; initial real calculation, evidence replay and 0.43–0.44 s cache hits already passed |
+| Planner service and first UI | Inputs, one background job, cancellation/retry, visible errors, saved reopen, timelines, ranges and exports | Pi reports all checks passed, including real cancellation in 2.2 s and 0.43–0.44 s cache hits |
 | Training rules | Explicit units, mass costs, limits, equipment rules, load priority, events, seed behavior, UNKNOWN-environment handling and success/failure definitions | Owner reviews a versioned rule sheet before training implementation expands, as required by PRD section 6 |
 | Training engine | Immutable planning link, coupled power/reserves/food/science/transmissions/exposure proxy, bounded events, deterministic stepping and resume/replay/export | Pi returns one reproducible run, a resource-shortfall failure and state/export checks; owner reviews the educational behavior |
 

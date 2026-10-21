@@ -1,5 +1,9 @@
 # Pi handoff — cancellation and submission errors only
 
+**Completed:** owner supplied Pi's all-checks-passed report for `28387ec`.
+See [milestone evidence](LML-PLANNER-MILESTONE.md). Commands remain here for
+reference; do not repeat this batch automatically.
+
 Owner supplied [Pi's findings](LML-PLANNER-CANCEL-CODEX-HANDOFF.md). Source now
 addresses those two defects. Codex has not run application code/tests. No
 numerical refinement or feature expansion is part of this batch.
