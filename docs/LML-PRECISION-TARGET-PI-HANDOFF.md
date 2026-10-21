@@ -1,4 +1,4 @@
-# Pi handoff — fixed adaptive precision target
+# Pi handoff — v6 disk-edge area correction
 
 Use the current checkout on `codex/lunar-precision-target`. Source is prepared,
 not runtime-verified. Preserve unrelated files. No installation, downloads,
@@ -16,14 +16,16 @@ PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/check_horizon_re
 PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/check_result_store.py
 ```
 
-Each must exit zero. The adaptive check covers skipped lower/equal thresholds,
-higher-threshold and different-wedge eligibility, sample isolation and exact
-terrain-work debits. Codex has not executed these checks.
+Each must exit zero. The disk-area check now covers clipped quarter/interior/
+outside areas, reflection, refinement and early work-limit accounting. Adaptive
+checks retain the v4 proof rules. Codex has not executed these checks. The v5
+duplicate-work experiment failed and was removed; this candidate changes area
+accounting for already proved regions instead.
 
 ## 2. One fixed sample, with an explicit acceptance exit status
 
 ```bash
-PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/profile_transition_sample.py --require-target --output data/local/lml/precision-target-profile.json
+PYTHONPATH=apps/clps/api/src .venv/bin/python apps/clps/scripts/profile_transition_sample.py --require-target --output data/local/lml/precision-target-v6-profile.json
 ```
 
 Uses the existing PR #9 reference's sample-a Sun at
@@ -32,8 +34,9 @@ ignored `data/local`. Exit 0 requires fraction width <=0.01; exit 2 means that
 the target was not met. In that case return the JSON metrics and stop. Do not
 call a narrower interval a passing result if width still exceeds the target.
 
-Return elapsed seconds, lower/upper bounds, width, termination, terrain visits,
-attempt count and skipped count. Compare with v4's interval
+Preserve the earlier failed `precision-target-profile.json`. Return elapsed
+seconds, lower/upper bounds, width, termination, terrain visits, attempt count,
+clipped tile count and circle-area strips used/budget. Compare with v4/v5's interval
 [0.40665914200781333, 0.4245932936659623], width 0.017934151658148993.
 Record any widening; scheduling changes are not assumed monotonic.
 
@@ -59,7 +62,7 @@ be released by the finished run; never remove a live process's lock.
 
 ## Return
 
-Return the commands' exit statuses and compact outputs, profile path, final
+Return the source commit, commands' exit statuses and compact outputs, profile path, final
 run ID if reached, verifier outputs, and fixed-sample acceptance result.
 Do not commit generated evidence or broaden this into backend/API/UI work.
 One next action after a failure: Codex corrects the measured failure on this

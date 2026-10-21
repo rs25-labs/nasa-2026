@@ -5,8 +5,9 @@ import heapq
 import math
 
 from .bounded_math import Interval, PI, dot, sin_cos_degrees
+from .circle_area import clipped_area_lower,STRIPS_PER_TILE,STRIP_BUDGET
 
-INTEGRATOR_ID = 'lml-projected-disk-bounds-v5'
+INTEGRATOR_ID = 'lml-projected-disk-bounds-v6'
 TILE_BUDGET = 16384
 CLASSIFICATION_BUDGET = 4096
 MAX_DEPTH = 10
@@ -59,6 +60,25 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
     classified = 0
     limits=set()
     whole_state = None
+    circle_strips=0
+    def credit(receipt,evidence,inside):
+        nonlocal visible,blocked,circle_strips
+        if inside:
+            amount=Interval(receipt['area_square'])
+            receipt.update(criterion='inside-disk-square')
+        elif circle_strips+STRIPS_PER_TILE<=STRIP_BUDGET:
+            amount=Interval(clipped_area_lower(receipt['box']))
+            circle_strips+=STRIPS_PER_TILE
+            receipt.update(criterion='disk-clipped-area-lower-bound',
+                           clipped_area_lower=str(amount.lo),area_strips=STRIPS_PER_TILE)
+        else:
+            limits.add('circle-area-strip-budget')
+            return False
+        if evidence['state']=='FULL':visible=visible+amount
+        else:blocked=blocked+amount
+        receipt.update(state=evidence['state'],evidence=evidence)
+        terminals.append(receipt)
+        return True
     while heap and visited < tile_budget:
         _,tile_id,box,inherited = heapq.heappop(heap)
         visited += 1
@@ -94,13 +114,8 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
             terminals.append(receipt)
             termination = 'whole-disk-region-proof'
             break
-        if inside and state in ('FULL','BLOCKED'):
-            if state == 'FULL':
-                visible = visible+area
-            else:
-                blocked = blocked+area
-            receipt.update(state=state,criterion='inside-disk-square',evidence=evidence)
-            terminals.append(receipt)
+        if state in ('FULL','BLOCKED') and credit(receipt,evidence,inside):
+            pass
         elif len(tile_id) >= max_depth:
             limits.add('depth-limit')
             receipt.update(state='UNKNOWN',criterion='depth-limit-or-circle-edge',evidence=evidence)
@@ -124,8 +139,16 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
     else:
         for _,tile_id,box,inherited in heap:
             x0,x1,y0,y1 = box
-            terminals.append(dict(tile_id=tile_id,box=list(box),area_square=(x1-x0)*(y1-y0),
-                                  state='UNKNOWN',criterion='unprocessed',evidence=inherited))
+            receipt=dict(tile_id=tile_id,box=list(box),area_square=(x1-x0)*(y1-y0))
+            radial=Interval(x0,x1).square()+Interval(y0,y1).square()
+            if radial.lo>1:
+                receipt.update(state='OUTSIDE',criterion='square-outside-unit-disk')
+            elif inherited is not None and inherited['state'] in ('FULL','BLOCKED'):
+                if credit(receipt,inherited,radial.hi<=1):continue
+                receipt.update(state='UNKNOWN',criterion='unprocessed',evidence=inherited)
+            else:
+                receipt.update(state='UNKNOWN',criterion='unprocessed',evidence=inherited)
+            terminals.append(receipt)
         lower,upper = _fraction(visible,blocked)
         state = 'PARTIAL' if visible.lo>0 and blocked.lo>0 else 'UNKNOWN'
         scalar = ''
@@ -134,6 +157,8 @@ def integrate_disk(row,prover,*,tile_budget=TILE_BUDGET,max_depth=MAX_DEPTH,tole
     return dict(state=state,visible_fraction=scalar,visible_fraction_lower=lower,visible_fraction_upper=upper,
                 adaptive_bearing_refinement=getattr(prover,'adaptive_refinement',None),
                 horizon_preparation=preparation,terrain_node_budget=getattr(prover,'initial_budget',None),
+                circle_area_policy='concave-strip-lower-v1',circle_area_strips_used=circle_strips,
+                circle_area_strip_budget=STRIP_BUDGET,
                 terrain_visited_nodes=(prover.initial_budget-prover.remaining) if hasattr(prover,'initial_budget') else None,
                 fraction_width_upper=0. if upper==lower else math.nextafter(upper-lower,math.inf),integrator_id=INTEGRATOR_ID,
                 tile_budget=tile_budget,max_depth=max_depth,tolerance=tolerance,visited_tiles=visited,
@@ -149,10 +174,7 @@ class TerrainTileProver:
         self.remaining = terrain_node_budget
         self.initial_budget = terrain_node_budget
         self.has_horizon_bank=False
-        self.adaptive_refinement=dict(policy='witness-gated-dyadic-v2',attempt_limit=128,attempts=[],
-                                      visited_nodes=0,skip_limit=4096,skipped=[])
-        # Per-sample scheduling only: failed proofs never enter the sky cache.
-        self.failed_bearing_attempts={}
+        self.adaptive_refinement=dict(policy='witness-gated-dyadic-v1',attempt_limit=128,attempts=[],visited_nodes=0)
         self.witnesses = []
         if prepared is not None:
             self.witnesses,self.approx = prepared.witnesses,prepared.approx

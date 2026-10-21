@@ -353,9 +353,10 @@ def main(argv: list[str] | None = None) -> int:
                     for reason in sorted({p['termination'] for p in clearance.proofs})
                 }
                 report['disk_area_integration'] = {
-                    'integrator_id': 'lml-projected-disk-bounds-v5',
+                    'integrator_id': 'lml-projected-disk-bounds-v6',
                     'proof_artifact': 'projected-disk-area-proofs.json',
-                    'normalization': 'uniform projected area of unit image disk; circle-edge squares left uncertain',
+                    'normalization': 'uniform projected area of unit image disk; clipped areas bounded by concave-strip lower sums',
+                    'circle_area_policy':'concave-strip-lower-v1','circle_area_strip_budget_per_sample':65536,
                     'samples_subdivided':len(clearance.area_proofs),
                     'requested_fraction_width':.01,'tile_budget_per_sample':16384,
                     'region_classification_budget_per_sample':4096,

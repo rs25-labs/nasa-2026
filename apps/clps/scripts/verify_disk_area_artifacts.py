@@ -191,6 +191,7 @@ def verify(run):
                 B=(E*d[0]+N*d[1])/h
                 assert A.lo>0 and B.lo>0 and (A.square()+B.square()).lo>k.square().hi
         visible,blocked=Interval(0),Interval(0)
+        circle_strips=0
         for t in area['tiles']:
             x0,x1,y0,y1=t['box']
             radial=Interval(x0,x1).square()+Interval(y0,y1).square()
@@ -202,9 +203,25 @@ def verify(run):
                 assert t['tile_id'].startswith(rid.removeprefix('region:'))
                 assert area['region_receipts'][rid]['state']==t['state']
                 if area['termination']!='whole-disk-region-proof':
-                    assert radial.hi<=1
-                    if t['state']=='FULL':visible=visible+t['area_square']
-                    else:blocked=blocked+t['area_square']
+                    if t['criterion']=='disk-clipped-area-lower-bound':
+                        from lunar_lab.circle_area import clipped_area_lower,STRIPS_PER_TILE
+                        assert area['integrator_id']=='lml-projected-disk-bounds-v6'
+                        assert area['circle_area_policy']=='concave-strip-lower-v1'
+                        assert radial.lo<=1<radial.hi
+                        assert t['area_strips']==STRIPS_PER_TILE
+                        circle_strips+=t['area_strips']
+                        lower=clipped_area_lower(t['box'],strips=t['area_strips'])
+                        assert lower==Interval(t['clipped_area_lower']).lo
+                        assert 0<=lower<=t['area_square']
+                        amount=Interval(lower)
+                    else:
+                        assert t['criterion']=='inside-disk-square' and radial.hi<=1
+                        amount=Interval(t['area_square'])
+                    if t['state']=='FULL':visible=visible+amount
+                    else:blocked=blocked+amount
+        if area['integrator_id']=='lml-projected-disk-bounds-v6':
+            assert area['circle_area_policy']=='concave-strip-lower-v1'
+            assert circle_strips==area['circle_area_strips_used']<=area['circle_area_strip_budget']==65536
         if area['termination']=='whole-disk-region-proof':
             assert len(area['tiles'])==1 and area['state'] in ('FULL','BLOCKED')
         else:

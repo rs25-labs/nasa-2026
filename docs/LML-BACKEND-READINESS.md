@@ -13,10 +13,11 @@ historical evidence. CSV/JSON result reuse passed Pi's four-check handoff and
 is merged in [PR #10](https://github.com/rs25-labs/nasa-2026/pull/10).
 
 The adaptive algorithm exists, but its measured fixed transition width is
-0.017934151658148993 rather than <=0.01. The current v5 scheduling candidate
-awaits the [precision handoff](LML-PRECISION-TARGET-PI-HANDOFF.md). This is the
-immediate next execution batch. No v5 acceptance or runtime improvement is
-claimed yet.
+0.017934151658148993 rather than <=0.01. Pi measured the v5 scheduling candidate:
+identical bounds, target not met. That experiment is removed. The current v6
+disk-edge accounting candidate awaits the
+[precision handoff](LML-PRECISION-TARGET-PI-HANDOFF.md), the immediate next
+execution batch. No v6 acceptance or runtime improvement is claimed yet.
 
 ## Remaining deliverables, in dependency order
 

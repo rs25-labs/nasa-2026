@@ -24,16 +24,6 @@ def refine_bearing(prover,direction,tile_id,obstruction_floor,witness=None):
     # Parent angles may be unwrapped differently around north.
     if not 0<end-start<=original['wedge_end_deg']-original['wedge_start_deg']:return None
     if not all(dot(n,direction).lo>0 for n in wedge_normals(start,end)):return None
-    previous=prover.failed_bearing_attempts.get((start,end))
-    if (previous is not None and direction[2].lo<=previous['threshold']
-            and len(work['skipped'])<work['skip_limit']):
-        # This does not prove obstruction. Spend later work elsewhere and leave
-        # this tile unresolved; narrower wedges/higher thresholds may still try.
-        work['skipped'].append(dict(criterion='same-wedge-lower-threshold-unresolved',
-            previous_attempt=previous['proof_id'],after_attempt_count=len(work['attempts']),
-            tile_id=tile_id,wedge_start_deg=start,wedge_end_deg=end,
-            direction=[[str(d.lo),str(d.hi)] for d in direction]))
-        return None
     proof=engine.prove_wedge(start,end,Interval(direction[2].lo),node_budget=min(512,prover.remaining))
     proof_id=f'adaptive-bearing-{len(engine.proofs)}'
     proof.update(proof_id=proof_id,proof_kind='bearing-horizon-wedge',threshold_origin='tile-up-v1',
@@ -43,7 +33,5 @@ def refine_bearing(prover,direction,tile_id,obstruction_floor,witness=None):
     engine.proofs.append(proof)
     work['attempts'].append(proof_id);work['visited_nodes']+=proof['visited_nodes']
     prover.remaining-=proof['visited_nodes']
-    if not proof['clear'] and (previous is None or direction[2].lo>previous['threshold']):
-        prover.failed_bearing_attempts[(start,end)]=dict(threshold=direction[2].lo,proof_id=proof_id)
     engine.sky_cache.remember(proof)
     return proof

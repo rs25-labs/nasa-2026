@@ -40,7 +40,10 @@ def main():
                          cached_nodes=len(engine.cache),region_proofs=len(engine.proofs),
                          adaptive_witnesses=sum(r.get('witness_kind')=='adaptive-cell-circle' for r in area['region_receipts'].values()),
                          adaptive_attempts=len(prover.adaptive_refinement['attempts']),
-                         skipped_attempts=len(prover.adaptive_refinement['skipped']),
+                         skipped_attempts=len(prover.adaptive_refinement.get('skipped',[])),
+                         clipped_tiles=sum(t['criterion']=='disk-clipped-area-lower-bound' for t in area['tiles']),
+                         circle_area_strips_used=area['circle_area_strips_used'],
+                         circle_area_strip_budget=area['circle_area_strip_budget'],
                          target_met=area['fraction_width_upper']<=.01)
     print(json.dumps({k:v for k,v in area.items() if k not in ('tiles','region_receipts','adaptive_bearing_refinement')},indent=2))
     print(json.dumps(metrics,indent=2))
