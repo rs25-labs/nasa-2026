@@ -47,11 +47,12 @@ and reusable seasonal/mission-window CSV summaries. The bounded
 three sites over two days before the long 2026–2028 archive. Calendar, date
 search and comparison UI follow verified data; no database or solver refinement.
 
-Atlas pilot status: all 50 terrain checks and four jobs passed; fifth job
-calculated but failed cache-dependent proof replay. The
-[correction/continuation handoff](LML-SITE-ATLAS-REPLAY-PI-HANDOFF.md) reconstructs
-saved terrain-cache geometry for exact replay, preserves all original data,
-and reuses calculations under a new verifier identity. Pi verification pending.
+Atlas pilot completed on `214ba7e`: all 50 terrain checks, six verified jobs,
+zero-work resume and summary/sample/boundary checks passed. The cache replay
+correction was confirmed against the exact failed run; five calculations were
+reused and only the sixth was new. [Evidence](LML-SITE-ATLAS-PILOT-STATUS.md).
+Next is the [frozen-source long collection](LML-SITE-ATLAS-LONG-PI-HANDOFF.md),
+followed by the site/calendar/comparison UI. Full three-year archive not started.
 
 ## Batch 01 — Data foundation (current handoff)
 

@@ -49,7 +49,9 @@ checks before a collection starts. No inferred ice deposits or hazard claims.
       resume/integrity pilot; no extensive generated suite.
 - [x] Pi handoff: preflight 50, three representative points × two one-day
       hourly chunks, verify artifacts, resume with no workers, summarize, stop.
-- [ ] Pi executes pilot; owner reviews before the long collection/UI milestone.
+- [x] Pi executes pilot and continuation; owner supplies passing results.
+- [ ] Run full archive from a frozen source snapshot and verify final summaries.
+- [ ] Add site cards/calendar/date search/comparison UI using the archive.
 
 The background archive reuses cached scientific assets read-only through an
 assets-directory link and a private copied receipt ledger. It has its own
@@ -70,8 +72,9 @@ Full collection plan is 50 sites × 37 chunks for 2026-01-01 through 2029-01-01
 not extrapolated from a previously easy site. Full collection and atlas UI are
 the next milestone after owner review of Pi's pilot outputs.
 
-Pi passed the catalog/preflight and four jobs; job 5 calculated but failed
-proof replay at cache capacity. See [pilot evidence](LML-SITE-ATLAS-PILOT-STATUS.md)
-and the bounded [verifier correction/continuation](LML-SITE-ATLAS-REPLAY-PI-HANDOFF.md).
-No full collection or finished summary is verified yet. Solver/package source
-is unchanged so existing calculations can be reused after re-verification.
+Pi completed the corrected pilot on `214ba7e`: all six jobs verified, first
+five reused, zero-work resume, exact joined samples and byte-identical repeated
+summaries. See [pilot evidence](LML-SITE-ATLAS-PILOT-STATUS.md). The
+[long-collection handoff](LML-SITE-ATLAS-LONG-PI-HANDOFF.md) uses frozen source,
+a first 30-day chunk checkpoint, then the serial 1,850-job queue. Full collection
+has not started; no three-year results are claimed yet.

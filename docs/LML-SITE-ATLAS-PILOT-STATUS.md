@@ -1,4 +1,32 @@
-# Site atlas pilot — evidence and replay correction
+# Site atlas pilot — completed and verified by Pi
+
+## Final result on 214ba7e
+
+Owner supplied Pi's successful continuation. No failures, installs, downloads,
+solver/budget changes or source edits. Codex inspected the saved progress and
+summary receipt read-only; Codex has not executed application code/tests.
+
+- Focused cache regression passed. Exact failed run replay passed: 2,833
+  clearance proofs and 54 complete disk partitions, original artifacts intact.
+- Adopted collection:
+  `247f8c653445187e99a8179dd95044b6c856cd5feb40c68767d9021386a30eec`.
+  Original collection remains untouched. First five responses were cache hits
+  with original IDs, all reverified. Only sixth job calculated fresh:
+  `20261021T192345Z-c9520d47`, 1450.1 s, 1001.6 MiB; 4,084 clearance replays,
+  56 complete disk partitions. Adopted collection about 1.5 GB.
+- Six complete receipts. Repeat: zero new jobs, six resumed, no new runs or
+  verification logs. App saved entries stayed at six.
+- Summary passed: three 98-row series, 18 seasonal rows, 12 mission-window
+  rows, six seams, six lineage entries and dated site profiles. All joined
+  sample values matched original chunks; boundary uses chunk-two start.
+  Partial month/year flags were correct. Repeated summaries were byte-identical.
+- Server idle, no live collectors/workers or held locks. Full archive not started.
+
+This completes the collection pilot milestone. Next:
+[long collection from frozen source](LML-SITE-ATLAS-LONG-PI-HANDOFF.md), then
+calendar/site-comparison UI using completed archive data.
+
+## Earlier failure and diagnosis (retained history)
 
 Pi reported `83a9721`: focused check/workload preview and all 50 terrain
 preflights passed. 20 published candidates + 30 exploratory neighbors; all
@@ -27,8 +55,8 @@ The old verifier replays only published proofs; its cache history can differ.
 The correction is confined to verifier scripts: reconstruct/check the final
 saved node inventory directly against source terrain, then retain every exact
 proof comparison. Positive clear claims still require full original replay;
-stored UNKNOWN/bounds/budgets are unchanged. A focused synthetic check and
-exact failed-run verification are pending Pi, not claimed passing by Codex.
+stored UNKNOWN/bounds/budgets are unchanged. Pi subsequently confirmed the
+diagnosis and the correction as recorded above.
 
 After verification, a bounded script copies cached runs to the new verifier
 identity without changing original collection metadata or promoting receipts.
