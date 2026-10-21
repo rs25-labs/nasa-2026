@@ -1,5 +1,10 @@
 # Two-stage refinement implementation plan
 
+Historical experiment, now closed by owner direction. V8 attained width
+0.010344217526156609 in 51.1845 seconds; the owner retires the 0.01 gate and
+directs planner app work. No more optimization in this plan. Remaining runtime
+integrity is checked through the app handoff, without a precision rejection.
+
 Owner approves the second-pass direction after the v7 design review. Codex
 supplies source and a bounded Pi handoff; Pi executes. No subagents.
 

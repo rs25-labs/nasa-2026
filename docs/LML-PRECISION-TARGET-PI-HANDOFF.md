@@ -1,7 +1,7 @@
 # Pi handoff — v7 reuse-only proof checks
 
-Active successor: [v8 two-stage handoff](LML-TWO-STAGE-PI-HANDOFF.md), prepared
-after the owner approved the design-review recommendation.
+Precision handoffs are retired by owner direction. Active successor:
+[planner app handoff](LML-PLANNER-PI-HANDOFF.md). Do not run more target experiments.
 
 **Completed with failed acceptance:** Pi ran the fixed sample on `b1f89f4`;
 width 0.010592929572963818 exceeded 0.01. Do not rerun this handoff automatically

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lunar Mission Lab</title><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/">◐ <span>LUNAR MISSION LAB</span></a><span class="tag">SOUTH POLE · PLANNER</span></header>
+<main>
+  <div class="intro"><p class="eyebrow">FROM A PLACE TO A POSSIBILITY</p><h1>Find your window<br>on the Moon.</h1><p>Choose a landing site and date. Explore how terrain shapes sunlight and the view of Earth.</p></div>
+  <div class="workspace">
+    <section class="panel setup" aria-labelledby="setup-title">
+      <div class="section-title"><span class="number">01</span><h2 id="setup-title">Set your mission</h2></div>
+      <div class="polar">
+        <svg id="map" viewBox="0 0 320 290" role="img" aria-label="South-pole coordinate schematic. Use the coordinate fields to select a site with a keyboard.">
+          <defs><radialGradient id="cap"><stop stop-color="#374659"/><stop offset="1" stop-color="#18212e"/></radialGradient></defs>
+          <circle cx="160" cy="140" r="112" fill="url(#cap)"/><g fill="none" stroke="#526073" stroke-width=".7"><circle cx="160" cy="140" r="112"/><circle cx="160" cy="140" r="67" stroke-dasharray="3 5"/><circle cx="160" cy="140" r="22" stroke-dasharray="3 5"/><path d="M48 140H272M160 28V252M81 61L239 219M81 219L239 61"/></g>
+          <g fill="#9eaabd" font-size="10" text-anchor="middle"><text x="160" y="17">0°</text><text x="292" y="144">90°E</text><text x="28" y="144">90°W</text><text x="160" y="272">180°</text><text x="188" y="132">90°S</text><text x="236" y="74">85°S</text></g>
+          <circle id="site-halo" cx="160" cy="130" r="12" fill="#a9e1c8" opacity=".12"/><circle id="site-dot" cx="160" cy="130" r="4" fill="#a9e1c8" stroke="#ecfff5" stroke-width="1"/>
+        </svg>
+        <p class="caption">Coordinate schematic · click to choose a site<br>Terrain is used in calculation; this is not a terrain basemap.</p>
+      </div>
+      <form id="mission-form" novalidate>
+        <label>Site name<input name="site_id" value="my-site" pattern="[A-Za-z0-9_-]{1,48}" maxlength="48" required></label>
+        <div class="pair"><label>Latitude, °<input name="latitude_deg" type="number" value="-89.54" min="-90" max="-85" step="any" required></label><label>Longitude, °<input name="longitude_deg" type="number" value="0" min="-180" max="180" step="any" required></label></div>
+        <label>Start date & time · UTC<input name="start" type="datetime-local" value="2026-11-23T21:00" min="2026-01-01T00:00" max="2028-12-31T23:59" required></label>
+        <div class="pair"><label>Duration, days<input name="days" type="number" value="1" min="1" max="30" step="1" required></label><label>Observer height, m<input name="observer_height_m" type="number" value="2" min="0" max="20" step="any" required></label></div>
+        <p class="caption">Six-hour samples · dates within 2026–2028 · cached NASA terrain and ephemerides</p>
+        <button id="calculate" class="primary" type="submit">Calculate environment <span aria-hidden="true">↗</span></button>
+      </form>
+    </section>
+    <div class="result-column">
+      <section id="job-panel" class="panel job" hidden aria-label="Calculation status">
+        <div><strong id="job-title">Calculating</strong><p id="job-text" class="caption" role="status" aria-live="polite"></p></div><div><button id="cancel" class="secondary" type="button">Cancel</button><button id="retry" class="secondary" type="button" hidden>Retry same inputs</button></div>
+      </section>
+      <p id="error" class="error" role="alert" hidden></p>
+      <section id="empty" class="panel empty"><p class="eyebrow">A REAL ENVIRONMENT, FOR YOUR MISSION</p><div class="moon" aria-hidden="true">◐</div><h2>Every site has a different rhythm.</h2><p>Calculate a mission to see sunlight, Earth-disk visibility and the uncertainty that remains.</p><p class="caption">New calculations can take several minutes. You can keep using the page while they run.</p></section>
+      <section id="results" class="panel results" hidden aria-labelledby="result-title">
+        <div class="section-title"><span class="number">02</span><div><p class="eyebrow">CALCULATED ENVIRONMENT</p><h2 id="result-title"></h2></div></div>
+        <p id="result-meta" class="caption"></p>
+        <div id="summary" class="summary-grid"></div>
+        <h3>Operating timeline</h3><div class="legend"><span class="FULL">Full</span><span class="PARTIAL">Partial</span><span class="BLOCKED">Blocked</span><span class="UNKNOWN">Unknown</span></div>
+        <div id="timeline"></div><p class="caption">Intervals hold each sampled state until the next sample. Boundaries are estimates; the final sample adds no duration.</p>
+        <details><summary>Inspect sample-by-sample bounds</summary><p class="caption">Percentages are rounded for display. Exports retain the original precision.</p><div class="table-wrap"><table><thead><tr><th scope="col">UTC</th><th scope="col">Body</th><th scope="col">State</th><th scope="col">Visible disk</th></tr></thead><tbody id="samples"></tbody></table></div></details>
+        <h3>Take the evidence with you</h3><div id="exports" class="exports"></div>
+        <details class="methods"><summary>What these results mean</summary><p>Ranges are calculated lower and upper bounds, conditional on the terrain model and reported geometric directions. Wider ranges and UNKNOWN states remain visible; they do not prevent a result from being shown.</p><p>Earth-disk visibility describes the visible area of Earth. It is not Earth-center communications visibility or a radio link budget. Terrain height error is not bounded by this model. Six-hour samples do not establish exact event times.</p><p id="run-id" class="caption"></p></details>
+      </section>
+      <section class="panel saved"><div class="section-title"><span class="number">03</span><h2>Saved calculations</h2><button id="refresh" class="text-button" type="button">Refresh</button></div><div id="saved-list"><p class="caption">Loading saved results…</p></div></section>
+    </div>
+  </div>
+</main>
+<footer>NASA terrain & ephemerides · Local file-based results · Lunar Mission Lab</footer>
+</body>
+</html>

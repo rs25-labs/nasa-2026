@@ -1,5 +1,11 @@
 # Pi handoff — v8 unresolved-region continuation
 
+**Retired:** Pi measured width 0.010344217526156609 at 51.1845 seconds, with the
+precision gate not met and latency gate met. The owner subsequently retired
+the width gate and directed app work. Do not rerun this experimental handoff.
+Use the [planner app handoff](LML-PLANNER-PI-HANDOFF.md) instead; its functional
+and evidence checks do not require a 1-point width.
+
 Run on the current `codex/lunar-precision-target` checkout. Codex prepared the
 source but has not executed application code/tests. Preserve unrelated files
 and all earlier profiles. Use the existing `.venv` and cached assets. No

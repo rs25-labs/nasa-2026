@@ -114,6 +114,12 @@ A saved plan must not be overwritten by a training decision. Changing configurat
 
 ## 9. Reliability and acceptance
 
+Owner scope update: the fixed-sample 1-percentage-point numerical width target
+is retired as a release/UI gate. Stop optimization experiments for that target.
+Return actual lower/upper bounds and UNKNOWN states without fabricating scalar
+values. Correct calculation, evidence integrity, input handling and useful app
+behavior remain required. Begin the planner UI with the existing backend now.
+
 Owner review must demonstrate:
 - A new site/date produces a real result and can launch a linked simulation.
 - Longest interruptions and constraints agree between screen and export.
