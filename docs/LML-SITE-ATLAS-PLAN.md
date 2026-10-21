@@ -69,3 +69,9 @@ Full collection plan is 50 sites × 37 chunks for 2026-01-01 through 2029-01-01
 (30-day chunk size), 1,850 jobs. Runtime/storage are measured in the pilot,
 not extrapolated from a previously easy site. Full collection and atlas UI are
 the next milestone after owner review of Pi's pilot outputs.
+
+Pi passed the catalog/preflight and four jobs; job 5 calculated but failed
+proof replay at cache capacity. See [pilot evidence](LML-SITE-ATLAS-PILOT-STATUS.md)
+and the bounded [verifier correction/continuation](LML-SITE-ATLAS-REPLAY-PI-HANDOFF.md).
+No full collection or finished summary is verified yet. Solver/package source
+is unchanged so existing calculations can be reused after re-verification.

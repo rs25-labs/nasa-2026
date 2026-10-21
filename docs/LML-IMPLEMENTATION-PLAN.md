@@ -47,6 +47,12 @@ and reusable seasonal/mission-window CSV summaries. The bounded
 three sites over two days before the long 2026–2028 archive. Calendar, date
 search and comparison UI follow verified data; no database or solver refinement.
 
+Atlas pilot status: all 50 terrain checks and four jobs passed; fifth job
+calculated but failed cache-dependent proof replay. The
+[correction/continuation handoff](LML-SITE-ATLAS-REPLAY-PI-HANDOFF.md) reconstructs
+saved terrain-cache geometry for exact replay, preserves all original data,
+and reuses calculations under a new verifier identity. Pi verification pending.
+
 ## Batch 01 — Data foundation (current handoff)
 
 - [x] Define explicit terrain/frame conventions and seven bounded asset sources.

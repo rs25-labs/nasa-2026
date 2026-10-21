@@ -5,6 +5,7 @@ This verifies model/numerical evidence, not physical terrain accuracy.
 """
 import csv
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -14,6 +15,33 @@ from lunar_lab.composite_bounds import CompositeClearance
 from lunar_lab.disk_area import disk_basis,direction_box
 from lunar_lab.global_terrain import GlobalTerrain
 from lunar_lab.terrain import PolarTerrain
+
+
+def restore_terrain_cache(engine,rows,expected_count):
+    """Recompute the final geometry inventory, including unpublished misses.
+
+    Failed region traversals populate this cache without publishing a clear
+    certificate. Replaying only certificates loses that resource history.
+    Preloading the final inventory preserves every original successful node
+    lookup and, when full, the original rejected allocations. Enclosures are
+    recomputed from source terrain, never trusted from the saved CSV.
+    """
+    assert not engine.cache
+    assert len(rows)==expected_count<=engine.cache_budget
+    seen=set();root=engine.root
+    for row in rows:
+        text=row['node_id'];parts=text.split(':')
+        assert len(parts)==4 and text not in seen,'invalid/duplicate terrain node ID'
+        box=tuple(float(p) if '.' in p else int(p) for p in parts)
+        assert all(math.isfinite(v) for v in box)
+        assert root[0]<=box[0]<box[1]<=root[1] and root[2]<=box[2]<box[3]<=root[3]
+        node=engine._node(box)
+        assert node is not None and node.id==text,'terrain inventory reconstruction failed'
+        seen.add(text)
+    for actual,saved in zip(engine.node_evidence(),rows):
+        assert set(actual)==set(saved),'terrain node schema differs'
+        assert all(str(value)==saved[name] for name,value in actual.items()),f"terrain enclosure differs: {saved['node_id']}"
+    assert len(engine.cache)==expected_count
 
 
 def continuation_partitions(area):
@@ -76,12 +104,15 @@ def verify(run):
         assert digests(Path(report[key]['path']))['sha256']==report[key]['sha256']
     terrain=PolarTerrain(root/'assets/ldem_85s_40m.lbl',root/'assets/ldem_85s_40m.img')
     global_dem=GlobalTerrain(root/'assets/ldem_16.lbl',root/'assets/ldem_16.img')
-    engine=CompositeClearance(terrain,global_dem,report['site_sample'])
+    metadata=report['composite_clearance']
+    engine=CompositeClearance(terrain,global_dem,report['site_sample'],cache_budget=metadata['cache_budget'])
+    restore_terrain_cache(engine,table('composite-terrain-nodes.csv'),metadata['cached_nodes'])
     proofs=json.loads((run/'composite-clearance-proofs.json').read_text())
     proof_by_id={p['proof_id']:p for p in proofs}
     assert len(proof_by_id)==len(proofs)
     published=set()
     for proof in proofs:
+        assert proof['cache_budget']==engine.cache_budget,'proof cache capacity differs from run metadata'
         if proof.get('proof_kind')=='bearing-horizon-wedge':
             replay=engine.prove_wedge(proof['wedge_start_deg'],proof['wedge_end_deg'],
                                       Interval(proof['minimum_disk_up_lo']),node_budget=proof['node_budget'])
@@ -122,9 +153,11 @@ def verify(run):
                 engine.sky_cache.remember(dict(replay,proof_id=proof['proof_id']))
         else:
             replay=engine.prove(proof,node_budget=proof['node_budget'],minimum_span=proof.get('minimum_polar_span',1))
-        assert replay['clear']==proof['clear'] and replay['termination']==proof['termination']
-        assert replay['terminal_nodes']==proof['terminal_nodes']
-        assert replay['visited_nodes']==proof['visited_nodes']
+        context=f"{proof['proof_id']}: stored {proof['clear']}/{proof['termination']}, replay {replay['clear']}/{replay['termination']}"
+        assert replay['clear']==proof['clear'] and replay['termination']==proof['termination'],context
+        assert replay['terminal_nodes']==proof['terminal_nodes'],context+'; terminal nodes differ'
+        assert replay['visited_nodes']==proof['visited_nodes'],context+'; visited nodes differ'
+        assert len(engine.cache)==metadata['cached_nodes'],context+'; replay allocated a node absent from saved inventory'
         published.add(proof['proof_id'])
     cells={r['cell_id']:r for r in table('terrain-cell-enclosures.csv')}
     witnesses={}
