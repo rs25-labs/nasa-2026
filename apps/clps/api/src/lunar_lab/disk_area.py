@@ -6,7 +6,7 @@ import math
 
 from .bounded_math import Interval, PI, dot, sin_cos_degrees
 
-INTEGRATOR_ID = 'lml-projected-disk-bounds-v4'
+INTEGRATOR_ID = 'lml-projected-disk-bounds-v5'
 TILE_BUDGET = 16384
 CLASSIFICATION_BUDGET = 4096
 MAX_DEPTH = 10
@@ -149,7 +149,10 @@ class TerrainTileProver:
         self.remaining = terrain_node_budget
         self.initial_budget = terrain_node_budget
         self.has_horizon_bank=False
-        self.adaptive_refinement=dict(policy='witness-gated-dyadic-v1',attempt_limit=128,attempts=[],visited_nodes=0)
+        self.adaptive_refinement=dict(policy='witness-gated-dyadic-v2',attempt_limit=128,attempts=[],
+                                      visited_nodes=0,skip_limit=4096,skipped=[])
+        # Per-sample scheduling only: failed proofs never enter the sky cache.
+        self.failed_bearing_attempts={}
         self.witnesses = []
         if prepared is not None:
             self.witnesses,self.approx = prepared.witnesses,prepared.approx

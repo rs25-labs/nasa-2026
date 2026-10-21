@@ -39,11 +39,12 @@ with explicit refresh and index rebuild. Pi reports all four bounded handoff
 checks passed; the owner supplied that report and authorized committing this
 milestone. The current working agreement assigns execution to Pi;
 the historical execution authorization below describes prior checkpoints.
-Precision and
-performance acceptance remain pending; Batch 02/L03 readiness is incomplete. The
-owner's continuation instructions authorize bounded Codex execution and
-PR/merge delivery, superseding the older execution assignment above for
-these checkpoints. No API/UI, training or SPHEREx work is included.
+Precision and performance acceptance remain pending; Batch 02/L03 readiness is
+incomplete. The owner now authorizes the remaining Lunar backend milestones
+before UI work; see [backend readiness](LML-BACKEND-READINESS.md). The immediate
+next batch is the [v5 precision handoff](LML-PRECISION-TARGET-PI-HANDOFF.md).
+Historical execution exceptions do not override the current Pi execution
+assignment. No new SPHEREx or UI implementation is included in this batch.
 
 ## Batch 03 — Planner workflow
 

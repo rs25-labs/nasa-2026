@@ -100,6 +100,28 @@ def verify(run):
         if adaptive:
             attempts=[proof_by_id[p] for p in adaptive['attempts']]
             assert len(set(adaptive['attempts']))==len(attempts)<=adaptive['attempt_limit']<=128
+            skips=adaptive.get('skipped',[])
+            if adaptive.get('policy')=='witness-gated-dyadic-v2':
+                assert area['integrator_id']=='lml-projected-disk-bounds-v5'
+                assert len(skips)<=adaptive['skip_limit']<=4096
+            else:
+                assert not skips
+            for skipped in skips:
+                assert skipped['criterion']=='same-wedge-lower-threshold-unresolved'
+                count=skipped['after_attempt_count']
+                assert isinstance(count,int) and 0<count<=len(attempts)
+                assert skipped['previous_attempt'] in adaptive['attempts'][:count]
+                previous=proof_by_id[skipped['previous_attempt']]
+                assert not previous['clear'] and previous['threshold_origin']=='tile-up-v1'
+                assert (previous['wedge_start_deg'],previous['wedge_end_deg'])==(
+                    skipped['wedge_start_deg'],skipped['wedge_end_deg'])
+                assert 4<=len(skipped['tile_id'])<=area['max_depth']
+                direction=direction_box(frame,tile_box(skipped['tile_id']))
+                assert skipped['direction']==[[str(d.lo),str(d.hi)] for d in direction]
+                assert direction[2].lo<=Interval(previous['minimum_disk_up_lo']).lo
+                from lunar_lab.bearing_horizon import wedge_normals
+                assert all(dot(n,direction).lo>0 for n in wedge_normals(
+                    skipped['wedge_start_deg'],skipped['wedge_end_deg']))
             assert all(p['threshold_origin']=='tile-up-v1' and p['node_budget']<=512 for p in attempts)
             adaptive_visits=sum(p['visited_nodes'] for p in attempts)
             assert adaptive_visits==adaptive['visited_nodes']

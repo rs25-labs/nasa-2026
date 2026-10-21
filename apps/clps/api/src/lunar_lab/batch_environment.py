@@ -353,7 +353,7 @@ def main(argv: list[str] | None = None) -> int:
                     for reason in sorted({p['termination'] for p in clearance.proofs})
                 }
                 report['disk_area_integration'] = {
-                    'integrator_id': 'lml-projected-disk-bounds-v4',
+                    'integrator_id': 'lml-projected-disk-bounds-v5',
                     'proof_artifact': 'projected-disk-area-proofs.json',
                     'normalization': 'uniform projected area of unit image disk; circle-edge squares left uncertain',
                     'samples_subdivided':len(clearance.area_proofs),

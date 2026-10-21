@@ -60,7 +60,33 @@ def check():
     assert prover.remaining==used
     prover.remaining=0
     assert refine_bearing(prover,d,'0002',Interval(0).lo) is None
-    print('PASS: stronger within-pixel witness, adaptive parent/reuse, shared work, mixed-tile and zero-work rejection')
+    # Failed traversal is scheduling information only, never obstruction.
+    def failed_wedge(start,end,minimum,node_budget):
+        return dict(clear=False,visited_nodes=17,wedge_start_deg=start,wedge_end_deg=end,
+                    minimum_disk_up_lo=str(minimum.lo))
+    failed_engine=SimpleNamespace(proofs=[dict(proof_id='parent',proof_kind='bearing-horizon-wedge',
+        wedge_start_deg=44,wedge_end_deg=46)],
+        sky_cache=SimpleNamespace(lookup=lambda direction:dict(minimum=Interval('.2').lo,proof_id='parent'),
+                                 remember=lambda proof:None),prove_wedge=failed_wedge)
+    scheduled=TerrainTileProver([],failed_engine,terrain_node_budget=2048)
+    scheduled.has_horizon_bank=True
+    first=refine_bearing(scheduled,d,'0000',Interval(0).lo)
+    remaining=scheduled.remaining
+    assert first is not None and not first['clear']
+    assert refine_bearing(scheduled,lower,'0001',Interval(0).lo) is None
+    assert scheduled.remaining==remaining and len(scheduled.adaptive_refinement['attempts'])==1
+    skipped=scheduled.adaptive_refinement['skipped'][0]
+    assert skipped['previous_attempt']==first['proof_id'] and skipped['after_attempt_count']==1
+    assert skipped['criterion']=='same-wedge-lower-threshold-unresolved'
+    assert refine_bearing(scheduled,d,'0002',Interval(0).lo) is None
+    higher=disk_basis(dict(azimuth_deg=45.04,center_elevation_deg=6,angular_radius_deg=.1))[0]
+    assert refine_bearing(scheduled,higher,'0003',Interval(0).lo) is not None
+    assert scheduled.remaining==remaining-17
+    changed=disk_basis(dict(azimuth_deg=45.08,center_elevation_deg=4,angular_radius_deg=.1))[0]
+    assert refine_bearing(scheduled,changed,'0010',Interval(0).lo) is not None
+    fresh=TerrainTileProver([],failed_engine,terrain_node_budget=2048,prepared=scheduled);fresh.has_horizon_bank=True
+    assert refine_bearing(fresh,lower,'0004',Interval(0).lo) is not None
+    print('PASS: stronger witness, parent/reuse, shared work, zero-work rejection, failed-attempt scheduling and sample isolation')
 
 
 if __name__=='__main__':check()
