@@ -6,6 +6,12 @@ Codex. The Space Apps reference was inspected in the browser. This batch adds
 no solver work, dependencies or new calculation runs. Preserve unrelated files.
 Stop at the first genuine failure; report one concrete next action.
 
+The owner has now supplied [passing map/worker evidence](LML-MAP-SKY-VERIFICATION.md)
+from the preceding batch. Do not repeat the spawn/cancellation scripts, fresh
+calculation, verifier or cache submission. That report included in-progress
+Moon files; it does not verify the finished Moon entry. Restart/reload from
+this handoff's current commit for the visual checks below.
+
 ## 1. One visual asset and restart
 
 Use the existing `.venv` and cached scientific assets. The owner requests an
@@ -72,18 +78,22 @@ Open http://127.0.0.1:8765 with no hash; reload styles/scripts.
   and immediate planner access. Report unavailable emulation rather than adding
   packages or changing system/browser security settings.
 
-## 4. Existing planner smoke and outstanding startup verification
+## 4. Existing planner smoke using the verified saved result
 
-Open an existing result and use one time/sky control. Existing map selection,
-saved result, CSV export and visible form error still work. No recalculation for
-this visual batch; no new numerical tests or width gate.
+Use the existing `map-site-1` result, run `20261021T150826Z-c4a22710`:
+open it and use one time/sky control. Existing map selection, saved result,
+CSV export and visible form error still work. Check that opening this result
+does not change the draft's globe marker; choosing a saved site's coordinates
+changes the draft only, with the displayed result retaining its own identity.
+No recalculation for this visual batch; no new numerical tests or width gate.
 
-The preceding macOS worker fix at `47926e0` remains unverified. If it has not
-already passed, run the separate [startup/retry handoff](LML-MAP-SPAWN-PI-HANDOFF.md)
-on this same commit after these visual checks. Its one exact fresh calculation
-is the outstanding check, not an additional numerical research batch. Do not
-claim the combined app milestone ready to merge until that evidence is returned.
+Record the saved-entry count before and after (six in the preceding report;
+use the actual current count). Explore/skip/site choice must not POST a new
+job or create a saved result. Leave partial unindexed folders untouched.
+The startup fix already passed: 24.55 s fresh calculation, verifier exit zero,
+0.37 s cache hit and CSV HTTP 200. No startup rerun is requested here.
 
 Return source commit, asset receipt hash, screenshots, interaction/accessibility
-findings, browser errors (if any), and startup handoff status. Leave server idle.
+findings, browser errors (if any), saved counts and confirmation that navigation
+did not submit calculations. Leave server idle with valid form inputs.
 One next action: Codex reviews the evidence for the next app milestone.

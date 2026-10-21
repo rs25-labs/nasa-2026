@@ -31,11 +31,15 @@ synchronization, then one bounded new-site calculation; no precision target.
 - [x] Add terrain map navigation/selection, provenance/resolution and two markers.
 - [x] Add sky/time controls with discrete playback and linked intervals/table.
 - [x] Document the [Pi batch](LML-MAP-SKY-PI-HANDOFF.md); execution/visual QA belongs to Pi/owner.
-- [ ] Pi verifies the running app; owner reviews before integration.
+- [x] Pi verifies the running map/sky app and corrected worker startup.
+- [ ] Owner reviews the finished Moon entry batch before combined integration.
 
 Pi verified sections 1–3 on `2c3c30a`: real map/projection, desktop/phone,
 exact saved-sample synchronization and discrete playback all passed. The first
 fresh calculation crashed before exec (-11, empty log); macOS identifies PROJ's
-fork-child cleanup. A macOS spawn-path correction is supplied, pending the
-bounded [startup/retry handoff](LML-MAP-SPAWN-PI-HANDOFF.md). The milestone is
-not yet ready to merge; no numerical refinement is needed.
+fork-child cleanup. Pi's [subsequent evidence](LML-MAP-SKY-VERIFICATION.md)
+reports both startup regressions, exact fresh-input retry, verifier, cache and
+CSV checks passing on `47926e0` with in-progress Moon entry files preserved.
+Do not repeat those calculations in the Moon visual batch. Finished Moon entry
+verification remains pending before combined integration; no numerical
+refinement is needed.

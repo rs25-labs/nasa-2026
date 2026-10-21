@@ -27,15 +27,17 @@ an offline LOLA terrain viewport and discrete sample controls linking the saved
 sky, interval cursors and sample table. The [map/sky Pi handoff](LML-MAP-SKY-PI-HANDOFF.md)
 passed map and saved-sample synchronization checks on `2c3c30a`. A fresh job
 failed before exec in PROJ's macOS fork-child cleanup. The bounded
-[spawn correction/retry handoff](LML-MAP-SPAWN-PI-HANDOFF.md) now covers the
-remaining startup, fresh-result, verifier and cache/export checks before merge.
+[spawn correction/retry handoff](LML-MAP-SPAWN-PI-HANDOFF.md) has now passed:
+startup/cancellation regressions, exact fresh-input retry (24.55 s), verifier,
+cache reuse (0.37 s) and CSV export. See [Pi evidence](LML-MAP-SKY-VERIFICATION.md),
+including the preserved in-progress Moon files in that run's checkout.
 Solver logic and the retired numerical acceptance gate are unchanged.
 
 The owner additionally requests a moonrise landing page and orbit-to-south-pole
 entry. [Moon entry source plan](LML-MOON-ENTRY-PLAN.md) adds an illustrative
 textured globe with draft/saved-site markers and a handoff to the real terrain
-picker. [Pi's visual batch](LML-MOON-ENTRY-PI-HANDOFF.md) is pending; this does
-not replace the outstanding worker-startup/fresh-result verification.
+picker. [Pi's visual batch](LML-MOON-ENTRY-PI-HANDOFF.md) is pending. It reuses
+the verified saved result and requests no repeated calculations or startup tests.
 
 ## Batch 01 — Data foundation (current handoff)
 

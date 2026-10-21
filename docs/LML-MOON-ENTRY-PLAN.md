@@ -34,7 +34,7 @@ Implementation:
       keyboard, reduced motion, fallback, mobile and existing planner behavior.
 - [ ] Pi runs [visual checks](LML-MOON-ENTRY-PI-HANDOFF.md); owner reviews output.
 
-Keep the worker startup correction and its pending Pi verification visible.
+The [worker startup correction now has passing Pi evidence](LML-MAP-SKY-VERIFICATION.md).
 This batch adds no calculation runs or precision acceptance gates. Stop after
 source delivery/Pi handoff for the next review milestone; do not merge unverified
 visual behavior.
