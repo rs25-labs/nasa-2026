@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ground: #0b0b0c;
+  --color-panel: #141415;
+  --color-rule: #2c2c2e;
+  --color-ink: #ecebe6;
+  --color-muted: #9b9993;
+  --color-sun: #f2b24a;
+  --color-earth: #6ea8e0;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --radius-sm: 2px;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-earth);
+  outline-offset: 2px;
+}
+
+/* Always-visible scrollbars, so clipped content is never silent. */
+.plan-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.plan-scroll::-webkit-scrollbar-track {
+  background: #1c1c1e;
+}
+.plan-scroll::-webkit-scrollbar-thumb {
+  background: #5a5a5e;
+  border: 2px solid #1c1c1e;
+}
+.plan-scroll::-webkit-scrollbar-corner {
+  background: #1c1c1e;
+}

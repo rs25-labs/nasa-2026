@@ -1,0 +1,21 @@
+site_id,region_id,region,latitude_deg,longitude_deg,source_site_id
+pub-cr01,cr,Connecting Ridge,-89.5270,-154.5920,CR01
+pub-cr02,cr,Connecting Ridge,-89.5360,-149.9370,CR02
+pub-cre01,cre,Connecting Ridge Extension,-89.0110,-94.6100,CRE01
+pub-cre02,cre,Connecting Ridge Extension,-89.2960,-114.0580,CRE02
+pub-dgkm01,dgkm,de Gerlache Kocher Massif,-85.5200,-115.3830,dGKM01
+pub-dgkm02,dgkm,de Gerlache Kocher Massif,-85.7770,-116.5020,dGKM02
+pub-dgr201,dgr2,de Gerlache Rim 2,-88.3890,-68.8650,dGR201
+pub-dgr202,dgr2,de Gerlache Rim 2,-88.0370,-75.0440,dGR202
+pub-fra02,fra,Faustini Rim A,-87.7490,95.0840,FRA02
+pub-fra03,fra,Faustini Rim A,-87.9630,94.3710,FRA03
+pub-hw01,hw,Haworth,-86.7680,-20.5140,HW01
+pub-hw02,hw,Haworth,-86.8080,-21.7190,HW02
+pub-mma01,mma,Mons Malapert,-85.9420,-0.9440,MMA01
+pub-mma02,mma,Mons Malapert,-86.0150,3.3820,MMA02
+pub-mmo01,mmo,Mons Mouton,-85.4160,31.8510,MMO01
+pub-mmo02,mmo,Mons Mouton,-85.4810,29.5490,MMO02
+pub-nr101,nr1,Nobile Rim 1,-85.2950,36.9170,NR101
+pub-nr102,nr1,Nobile Rim 1,-85.2610,36.8890,NR102
+pub-pns01,pns,Peak Near Shackleton,-88.9690,134.1060,PNS01
+pub-pns02,pns,Peak Near Shackleton,-89.0610,128.4420,PNS02

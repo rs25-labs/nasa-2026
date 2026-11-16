@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "collection_id": "247f8c653445187e99a8179dd95044b6c856cd5feb40c68767d9021386a30eec",
+  "summary_receipt_sha256": "f2fc4bfe97ba40747c8098828ce9c452c9f435f6883d9188f6aea0c8a4d61211",
+  "label": "Verified two-day pilot",
+  "start_utc": "2026-11-19T00:00:00+00:00",
+  "end_utc": "2026-11-21T00:00:00+00:00",
+  "observer_height_m": 2,
+  "step_hours": 1
+}

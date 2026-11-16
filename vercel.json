@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/estimate?site=keep-warm&latitude=-89.527&longitude=-154.592&height=2&start=2026-11-23T21:00:00Z&days=1",
+      "schedule": "* * * * *"
+    }
+  ]
+}

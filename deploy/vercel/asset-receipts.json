@@ -1,0 +1,128 @@
+{
+  "terrain_label": {
+    "source_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_85s_40m.lbl",
+    "resolved_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_85s_40m.lbl",
+    "filename": "ldem_85s_40m.lbl",
+    "downloaded_utc": "2026-10-19T00:17:28.878215+00:00",
+    "bytes": 4986,
+    "sha256": "d8105776af7fb79b1862ffa3946d013ec34f4dc6a00b7f6bff22ef8f768a5d3d",
+    "md5": "11af204ed3546ccecb89c125dab3ff47",
+    "http_metadata": {
+      "ETag": "\"c9b4e523b9dbd21:0\"",
+      "Last-Modified": "Fri, 02 Jun 2017 15:58:56 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  },
+  "terrain_image": {
+    "source_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_85s_40m.img",
+    "resolved_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_85s_40m.img",
+    "filename": "ldem_85s_40m.img",
+    "downloaded_utc": "2026-10-19T00:17:32.088619+00:00",
+    "bytes": 115034112,
+    "sha256": "1609e9b860748e0b9952a7239c51b37d3b2a799d35e9fc3c258526711cc1e51d",
+    "md5": "782aff7ca28e35b2c59483a40e382945",
+    "http_metadata": {
+      "ETag": "\"80146d975ff6d21:0\"",
+      "Last-Modified": "Thu, 06 Jul 2017 13:55:57 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  },
+  "lsk": {
+    "source_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/lsk/naif0012.tls",
+    "resolved_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/lsk/naif0012.tls",
+    "filename": "naif0012.tls",
+    "downloaded_utc": "2026-10-19T00:17:32.481387+00:00",
+    "bytes": 5257,
+    "sha256": "678e32bdb5a744117a467cd9601cd6b373f0e9bc9bbde1371d5eee39600a039b",
+    "md5": "25a2fff30b0dedb4d76c06727b1895b1",
+    "http_metadata": {
+      "ETag": null,
+      "Last-Modified": "Fri, 15 Jul 2016 00:00:37 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  },
+  "constants": {
+    "source_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc",
+    "resolved_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc",
+    "filename": "pck00011.tpc",
+    "downloaded_utc": "2026-10-19T00:17:33.033825+00:00",
+    "bytes": 131226,
+    "sha256": "3dff7b1dbeceaa01f25467767d3fa25816051c85d162d1edf04acb310ee28bb1",
+    "md5": "3c0bdc01bb4101d6242cf96ece67a586",
+    "http_metadata": {
+      "ETag": null,
+      "Last-Modified": "Tue, 27 Dec 2022 16:28:50 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  },
+  "spk": {
+    "source_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/a_old_versions/de421.bsp",
+    "resolved_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/a_old_versions/de421.bsp",
+    "filename": "de421.bsp",
+    "downloaded_utc": "2026-10-19T00:17:34.324936+00:00",
+    "bytes": 16790528,
+    "sha256": "08b20db2ae22488650641c5a9033e5bfda4b1c4b440cfeaf20f621cfa18ecdb3",
+    "md5": "25814bb3622904d0c444c52a4051eaf7",
+    "http_metadata": {
+      "ETag": null,
+      "Last-Modified": "Tue, 08 Apr 2008 21:07:58 GMT"
+    },
+    "integrity_basis": "published MD5 + observed SHA-256"
+  },
+  "orientation": {
+    "source_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de421_1900-2050.bpc",
+    "resolved_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de421_1900-2050.bpc",
+    "filename": "moon_pa_de421_1900-2050.bpc",
+    "downloaded_utc": "2026-10-19T00:17:35.109595+00:00",
+    "bytes": 1770496,
+    "sha256": "656f90616403d75a75f0cd6c8830fc5b44f8cb4facb5ccb8915e752b397520cf",
+    "md5": "c96640467fa62bf6e217a7e64b9c4e0b",
+    "http_metadata": {
+      "ETag": null,
+      "Last-Modified": "Wed, 19 Mar 2008 04:51:40 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  },
+  "frames": {
+    "source_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/fk/satellites/moon_080317.tf",
+    "resolved_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/fk/satellites/moon_080317.tf",
+    "filename": "moon_080317.tf",
+    "downloaded_utc": "2026-10-19T00:17:35.516306+00:00",
+    "bytes": 21437,
+    "sha256": "78732477b96f9863e7b0d65bcee3c22b8707ca5ed0db56d1173319cb2e8c7993",
+    "md5": "93b7d5f7c2c3678590149a652e9d8835",
+    "http_metadata": {
+      "ETag": null,
+      "Last-Modified": "Thu, 18 Jul 2013 10:07:49 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  },
+  "global_terrain_label": {
+    "source_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.lbl",
+    "resolved_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.lbl",
+    "filename": "ldem_16.lbl",
+    "downloaded_utc": "2026-10-20T19:28:11.169774+00:00",
+    "bytes": 5121,
+    "sha256": "9aef29463ccc6ed3a3fbe0df3ecd830a99c69e16b564f455507dee2697096579",
+    "md5": "550f6cd73ec11543709faf1226e0a7d2",
+    "http_metadata": {
+      "ETag": "\"a716197fccd2d41:0\"",
+      "Last-Modified": "Mon, 04 Mar 2019 20:54:44 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  },
+  "global_terrain_image": {
+    "source_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.img",
+    "resolved_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.img",
+    "filename": "ldem_16.img",
+    "downloaded_utc": "2026-10-20T19:28:13.472259+00:00",
+    "bytes": 33177600,
+    "sha256": "a511e40d7a3ea3275945b4da2a1df377133264fab0be94b7434b1cf8907254cb",
+    "md5": "87d937cf968462a61043e1e5b3166d65",
+    "http_metadata": {
+      "ETag": "\"76a9f37accd2d41:0\"",
+      "Last-Modified": "Mon, 04 Mar 2019 20:54:37 GMT"
+    },
+    "integrity_basis": "official HTTPS + byte checks + observed SHA-256 (not a pre-pinned source hash)"
+  }
+}

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lunar-mission-lab"
+version = "0.1.0"
+description = "Lunar Mission Lab: bounded NASA data foundation and geometric ephemeris reports"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "numpy>=1.26,<3",
+  "pyproj>=3.6,<4",
+  "spiceypy>=6,<9",
+  "matplotlib>=3.8,<4",
+]
+
+[project.scripts]
+lunar-foundation = "lunar_lab.foundation:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

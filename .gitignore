@@ -1,0 +1,11 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+.DS_Store
+.vercel/
+# Terrain and ephemeris files are downloaded, not stored in Git.
+data/local/

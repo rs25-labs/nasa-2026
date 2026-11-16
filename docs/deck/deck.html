@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lunar Mission Lab</title>
+<style>
+  @page { size: 1920px 1080px; margin: 0; }
+  :root { --ground:#0b0b0c; --panel:#141415; --rule:#2c2c2e; --ink:#ecebe6; --muted:#a3a19b; --sun:#f2b24a; --earth:#6ea8e0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); font-family: -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif; }
+  .slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; page-break-after: always; break-after: page; padding: 84px 104px; background: var(--ground); }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .kicker { font-size: 26px; color: var(--sun); font-weight: 650; margin: 0 0 18px; }
+  h1 { font-size: 72px; line-height: 1.05; margin: 0 0 28px; font-weight: 700; letter-spacing: -0.015em; }
+  h2 { font-size: 58px; line-height: 1.1; margin: 0 0 40px; font-weight: 700; letter-spacing: -0.01em; }
+  p, li { font-size: 32px; line-height: 1.42; }
+  ul { margin: 0; padding-left: 1.1em; }
+  li { margin: 0 0 22px; }
+  li::marker { color: var(--sun); }
+  ul.tight li { font-size: 29px; margin-bottom: 18px; }
+  .muted { color: var(--muted); }
+  .sun { color: var(--sun); }
+  .earth { color: var(--earth); }
+  .foot { position: absolute; left: 104px; right: 104px; bottom: 40px; display: flex; justify-content: space-between; font-size: 20px; color: var(--muted); }
+  .shot { border: 2px solid var(--rule); border-radius: 6px; display: block; }
+  /* Numbered markers placed on a screenshot, matching the numbered list beside it. Positions are % of the image. */
+  .pin { position: absolute; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; background: var(--sun); color: #1a1a1a; font-weight: 800; font-size: 24px; display: flex; align-items: center; justify-content: center; border: 3px solid #0b0b0c; box-shadow: 0 0 0 2px var(--sun), 0 4px 12px rgba(0,0,0,0.6); }
+  .num { display: inline-flex; width: 44px; height: 44px; border-radius: 50%; background: var(--sun); color: #1a1a1a; font-weight: 800; font-size: 24px; align-items: center; justify-content: center; margin-right: 18px; flex: none; }
+  .row { display: flex; align-items: flex-start; margin: 0 0 22px; font-size: 29px; line-height: 1.35; }
+  .box { border: 2px solid var(--rule); border-radius: 8px; background: var(--panel); padding: 26px 30px; }
+  .box h3 { margin: 0 0 12px; font-size: 30px; }
+  .box p { margin: 0; font-size: 28px; line-height: 1.42; }
+  .box h3 { font-size: 32px; }
+  .arrow { font-size: 48px; color: var(--sun); align-self: center; }
+  table.stat { border-collapse: collapse; font-size: 30px; margin-top: 10px; }
+  table.stat th, table.stat td { padding: 14px 26px; border-bottom: 2px solid var(--rule); text-align: left; }
+  table.stat th { color: var(--muted); font-weight: 600; font-size: 24px; }
+</style>
+</head>
+<body>
+
+<!-- 1. Title -->
+<section class="slide" style="padding:0">
+  <img src="img/moon.jpg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.9">
+  <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,7,12,0.92) 0%,rgba(4,7,12,0.75) 42%,rgba(4,7,12,0) 70%)"></div>
+  <div style="position:absolute;left:110px;top:230px;width:900px">
+    <p class="kicker">NASA Space Apps Challenge 2026 · Lunar Landing Site Navigator</p>
+    <h1 style="font-size:104px">Lunar Mission Lab</h1>
+    <p style="font-size:38px;margin:0 0 56px">Choose where and when to land near the Moon's south pole, and what a crew needs once there.</p>
+    <p style="font-size:34px;margin:0" class="sun"><b>lunarlab.rs25labs.com</b></p>
+    <p style="font-size:26px;margin:10px 0 0" class="muted">Open the link and press Demo Walkthrough for a guided tour.</p>
+  </div>
+  <div class="foot" style="color:#8a8a86"><span>Moon image: NASA Scientific Visualization Studio</span><span>1 / 7</span></div>
+</section>
+
+<!-- 2. The problem -->
+<section class="slide">
+  <p class="kicker">The problem</p>
+  <h2>At the lunar south pole, minor decisions impact mission success</h2>
+  <div style="display:flex;gap:80px">
+    <div style="flex:1.15">
+      <ul>
+        <li>The Sun stays a few degrees above the horizon, so nearby hills can hide it for days.</li>
+        <li>Earth sits low too. When it drops behind a ridge, there is no direct radio link.</li>
+        <li>A few hundred metres, or a launch a few days late, can change all of this.</li>
+        <li>Today's tools (Horizons, Quickmap, Moon Trek) are built for specialists and check one case at a time.</li>
+      </ul>
+    </div>
+    <div style="flex:1" class="box">
+      <h3>Same week, three candidate sites</h3>
+      <p class="muted" style="margin-bottom:8px">7-day stay from 14 December 2026, 2 m mast</p>
+      <table class="stat">
+        <tr><th>Site</th><th>Sunlight</th><th>Longest dark</th></tr>
+        <tr><td>Mons Mouton MMO01</td><td class="sun">100%</td><td>0 h</td></tr>
+        <tr><td>Connecting Ridge CR01</td><td class="sun">84%</td><td>20 h</td></tr>
+        <tr><td>Mons Malapert MMA01</td><td class="sun">56%</td><td>72 h</td></tr>
+      </table>
+      <p style="margin-top:22px">Lunar Mission Lab shows this on one screen in under a minute.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Numbers from the app, calculated with NASA LOLA terrain and JPL SPICE data</span><span>2 / 7</span></div>
+</section>
+
+<!-- 3. Plan -->
+<section class="slide">
+  <p class="kicker">What it does · Plan</p>
+  <h2 style="margin-bottom:30px">Lunar Mission Lab: Plan all mission parameters in a single console</h2>
+  <div style="display:flex;gap:48px;align-items:flex-start">
+    <div style="position:relative;width:1160px;flex:none">
+      <img class="shot" src="img/plan.jpg" style="width:1160px">
+      <span class="pin" style="left:26.0%;top:9.3%">1</span>
+      <span class="pin" style="left:83.3%;top:40.0%">2</span>
+      <span class="pin" style="left:76.0%;top:20.6%">3</span>
+      <span class="pin" style="left:52.0%;top:51.0%">4</span>
+      <span class="pin" style="left:21.9%;top:70.6%">5</span>
+    </div>
+    <div style="flex:1;padding-top:6px">
+      <div class="row"><span class="num">1</span><span>Choose the landing date and stay. A year strip shows sunlight and Earth for every day.</span></div>
+      <div class="row"><span class="num">2</span><span>Compare up to eight sites: sunlight, longest dark, Earth in view, lowest battery.</span></div>
+      <div class="row"><span class="num">3</span><span>Get a recommended site and the best landing date of the year.</span></div>
+      <div class="row"><span class="num">4</span><span>See the Sun and Earth against the real skyline, with countdowns to sunset and Earthset.</span></div>
+      <div class="row"><span class="num">5</span><span>Play the stay hour by hour. The table opens on a full page for many sites.</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>Screenshot of the live app</span><span>3 / 7</span></div>
+</section>
+
+<!-- 4. How it works -->
+<section class="slide">
+  <p class="kicker">How it works</p>
+  <h2>Real terrain and real orbits, checked every hour of the stay</h2>
+  <div style="display:grid;grid-template-columns:1fr 70px 1fr 70px 1fr;gap:0;align-items:stretch">
+    <div style="display:flex;flex-direction:column;gap:28px">
+      <div class="box"><h3>NASA LOLA terrain</h3><p>10 m map near the site, 40 m out to 150 km, global map elsewhere. The skyline is traced every 2° all around.</p></div>
+      <div class="box"><h3>JPL SPICE orbits</h3><p>DE421 positions of the Sun and Earth for any date from 1969 to 2035, with light time and libration.</p></div>
+    </div>
+    <div class="arrow" style="text-align:center">→</div>
+    <div class="box" style="display:flex;flex-direction:column;justify-content:center"><h3>Hour by hour</h3><p>How much of the Sun's disc and Earth's disc clears the skyline. No air on the Moon, so no refraction. Sunrise, sunset, Earthrise and Earthset found to about a minute.</p></div>
+    <div class="arrow" style="text-align:center">→</div>
+    <div style="display:flex;flex-direction:column;gap:28px">
+      <div class="box"><h3>Results per site</h3><p>Sunlight share, longest dark, Earth in view, longest Earth gap, battery level over the stay.</p></div>
+      <div class="box"><h3>Same numbers everywhere</h3><p>The screen, the 3D view and the PDF report all use the same calculation, redone on the server.</p></div>
+    </div>
+  </div>
+  <p class="muted" style="font-size:26px;margin-top:44px">Built with Python (SpiceyPy, NumPy), TypeScript, Svelte and three.js. Runs in any browser, nothing to install.</p>
+  <div class="foot"><span>All values are estimates; limits are listed in the app's Data and methods</span><span>4 / 7</span></div>
+</section>
+
+<!-- 5. Expedition and outpost -->
+<section class="slide">
+  <p class="kicker">What it does · Expedition</p>
+  <h2 style="margin-bottom:30px">Drive the site in 3D, then plan the crew's power</h2>
+  <div style="display:flex;gap:40px">
+    <div style="flex:1">
+      <img class="shot" src="img/drive.jpg" style="width:100%">
+      <p style="font-size:26px;margin:18px 0 0">The site built from NASA heights, lit by the Sun from its true position. The rover follows a route that avoids steep slopes, and shows battery, power, time to sunset and time until Earth sets.</p>
+    </div>
+    <div style="flex:1">
+      <img class="shot" src="img/outpost.jpg" style="width:100%">
+      <p style="font-size:26px;margin:18px 0 0">The outpost plan takes the crew size and days, works out the solar panels and battery to bring at each site, and marks darkness, Earth contact, work time and launch slip in green, orange or red.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Screenshots of the live app</span><span>5 / 7</span></div>
+</section>
+
+<!-- 6. Benefits and impact -->
+<section class="slide">
+  <p class="kicker">Benefits and impact</p>
+  <h2>A clear answer a team can act on</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+    <div style="flex:1">
+      <ul class="tight">
+        <li><b>Site choice sets the hardware.</b> Same crew, same week: Mons Malapert needs 98 times the battery of Mons Mouton (784 kWh against 8 kWh).</li>
+        <li><b>Faster decisions.</b> When a launch slips, drag the date and see which sites still work.</li>
+        <li><b>One document.</b> Export a PDF with the landing plan and the outpost plan, every number recalculated.</li>
+        <li><b>Past and future missions.</b> Real Landings replays the six Apollo landings, Blue Ghost 1, IM&#8209;1, IM&#8209;2, Chandrayaan&#8209;3 and SLIM. Site search includes the four regions NASA has named for upcoming CLPS landings.</li>
+        <li><b>For students too.</b> A guided walkthrough explains each part in plain words.</li>
+      </ul>
+    </div>
+    <div style="display:flex;gap:24px;flex:none">
+      <img class="shot" src="img/report-1.jpg" style="height:640px;background:#fff">
+      <img class="shot" src="img/report-2.jpg" style="height:640px;background:#fff">
+    </div>
+  </div>
+  <div class="foot"><span>Pages from the app's PDF mission planning report</span><span>6 / 7</span></div>
+</section>
+
+<!-- 7. Try it -->
+<section class="slide">
+  <p class="kicker">Try it</p>
+  <h2 style="font-size:84px;margin-bottom:20px" class="sun">lunarlab.rs25labs.com</h2>
+  <p style="font-size:36px;margin:0 0 70px">No sign-in. Press <b>Demo Walkthrough</b> on the start page for a 3-minute guided tour.</p>
+  <div style="display:flex;gap:40px">
+    <div class="box" style="flex:1;min-height:330px"><h3>What's next</h3><p>Relay-satellite visibility next to direct Earth contact. Guided classroom missions. Exact CLPS landing points and international sites as they are announced.</p></div>
+    <div class="box" style="flex:1;min-height:330px"><h3>Data</h3><p>NASA LOLA terrain (PDS Geosciences Node). JPL NAIF SPICE kernels. Candidate sites from Wueller et al. (2026). Landing sites from NASA NSSDC. CLPS regions from NASA's deliveries list and the USGS Gazetteer.</p></div>
+    <div class="box" style="flex:1;min-height:330px"><h3>Code</h3><p>github.com/rs25-labs/nasa-2026</p><p class="muted" style="margin-top:18px">Python, TypeScript, Svelte, three.js. Hosted on Vercel.</p><p class="muted" style="margin-top:18px">Code written with AI coding assistants. Every result is calculated from NASA and JPL data, not by a language model.</p></div>
+  </div>
+  <div class="foot"><span>Lunar Mission Lab · NASA Space Apps Challenge 2026</span><span>7 / 7</span></div>
+</section>
+
+</body>
+</html>

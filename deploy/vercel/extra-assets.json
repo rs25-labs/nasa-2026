@@ -1,0 +1,15 @@
+{
+  "ldem_85s_10m_label": {
+    "source_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_85s_10m.lbl",
+    "filename": "ldem_85s_10m.lbl",
+    "bytes": 4993,
+    "sha256": "ff9ed895d6e3dc11fdfe0daba431faf6bf3252cf09140989cdaf4dda582575db"
+  },
+  "ldem_85s_10m_image": {
+    "source_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_85s_10m.img",
+    "filename": "ldem_85s_10m.img",
+    "bytes": 1840545792,
+    "sha256": "6f5f9832ec6e2080ea532ddc8504656746780a89a7228cba943aa81f5862c3d1",
+    "split": {"parts": 6, "row_bytes": 60672}
+  }
+}
