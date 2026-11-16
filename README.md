@@ -5,7 +5,7 @@ An entry for the NASA Space Apps Challenge 2026, challenge "Lunar Landing Site N
 Lunar Mission Lab helps a mission planner choose where and when to land near the Moon's south pole, and what a crew
 would need once there.
 
-Live app: https://lunarlab.rs25labs.com
+Live app: https://lunarlab.rs25labs.com (press **Demo Walkthrough** on the start page for a guided tour)
 
 Slide deck: [docs/deck/lunar-mission-lab-deck.pdf](docs/deck/lunar-mission-lab-deck.pdf)
 
