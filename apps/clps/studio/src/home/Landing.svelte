@@ -67,6 +67,10 @@
         >Plan a Mission</a
       >
     </div>
+    <p class="mt-5 max-w-[46ch] border-l-2 border-sun bg-[#10151ac9] px-4 py-3 text-sm leading-relaxed text-ink">
+      <strong>Judges:</strong> we highly encourage you to start with the <strong>Demo Walkthrough</strong>. It plays through
+      every feature on its own, and you can pause or step through it at any time.
+    </p>
   </div>
 
   <p class="absolute right-[6vw] bottom-5 z-10 text-[11px] text-[#b0bccb]">
