@@ -63,18 +63,7 @@ const BEHAVIOUR: Record<string, Pick<TourStep, 'enter' | 'leave' | 'extraMs'>> =
   welcome: {
     enter: () => actions.replace({ ...STARTER, sites: [FIRST_SITE], selectedSiteId: FIRST_SITE.id } satisfies MissionState),
   },
-  'year-strip': {
-    extraMs: 3000,
-    enter: async (ctx) => {
-      if (!(await ctx.wait(2500))) return;
-      actions.setWindow(shift(STARTER.startUtc, 3), STARTER.days);
-    },
-    leave: () => {
-      actions.setWindow(STARTER.startUtc, STARTER.days);
-      void tick().then(clearComparison);
-    },
-  },
-  map: {
+  'add-sites': {
     extraMs: 1500,
     enter: async (ctx) => {
       for (const site of DEMO_SITES.slice(1)) {
@@ -84,19 +73,34 @@ const BEHAVIOUR: Record<string, Pick<TourStep, 'enter' | 'leave' | 'extraMs'>> =
       actions.selectSite(STARTER.selectedSiteId ?? FIRST_SITE.id);
     },
   },
-  table: { enter: ensureSites },
-  expand: { enter: ensureSites },
-  'compare-page': { enter: ensureSites },
+  'landing-date': {
+    extraMs: 3000,
+    enter: async (ctx) => {
+      ensureSites();
+      if (!(await ctx.wait(2500))) return;
+      actions.setWindow(shift(STARTER.startUtc, 3), STARTER.days);
+    },
+    leave: () => {
+      actions.setWindow(STARTER.startUtc, STARTER.days);
+      void tick().then(clearComparison);
+    },
+  },
+  sites: { enter: ensureSites },
   recommendation: { extraMs: 2000, enter: ensureSites },
-  'time-strip': {
+  'small-change': { enter: ensureSites },
+  'stay-clock': {
     extraMs: 4000,
     enter: () => {
+      ensureSites();
       actions.setClock(0);
       clock.setSpeed(6);
       clock.play();
     },
     leave: () => clock.pause(),
   },
+  'check-site': { enter: ensureSites },
+  'outpost-size': { enter: ensureSites },
+  'your-choice': { enter: ensureSites },
   expedition: {
     extraMs: 3000,
     enter: async (ctx) => {
@@ -107,11 +111,15 @@ const BEHAVIOUR: Record<string, Pick<TourStep, 'enter' | 'leave' | 'extraMs'>> =
     },
   },
   'drive-plan': {
-    extraMs: 3000,
+    extraMs: 4000,
     enter: async (ctx) => {
       if (!(await ctx.until(() => drive.commands !== null, 25_000))) return;
+      // Open panel, recommended leaving time, then the target; its recommended slope limit must be in before routing.
+      drive.panelOpen = true;
+      drive.departureChosen = false;
       drive.commands?.setTargetFromSite(DEMO_DRIVE_TARGET.latitudeDeg, DEMO_DRIVE_TARGET.longitudeDeg);
       if (!(await ctx.wait(1500))) return;
+      if (!(await ctx.until(() => !drive.recommending, 15_000))) return;
       await drive.commands?.findRoute();
     },
   },

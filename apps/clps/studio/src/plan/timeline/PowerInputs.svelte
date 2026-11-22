@@ -2,6 +2,9 @@
   import { useSession } from '../../lib/mission/session';
   import type { PowerSetup } from '../../lib/mission/store.svelte';
 
+  /** stacked: label above each field, three across, for a narrow column. */
+  let { stacked = false }: { stacked?: boolean } = $props();
+
   const { mission, actions } = useSession();
 
   interface Field {
@@ -45,10 +48,10 @@
   }
 </script>
 
-<div class="flex items-center gap-3" data-tour="power">
+<div class={stacked ? 'grid grid-cols-3 gap-3' : 'flex items-center gap-3'} data-tour="power">
   {#each fields as field (field.key)}
-    <label class="flex items-center gap-1.5 text-xs text-muted">
-      <span>{field.label}</span>
+    <label class="flex text-xs text-muted {stacked ? 'min-w-0 flex-col gap-1.5' : 'items-center gap-1.5'}">
+      <span>{field.label}{stacked ? ` (${field.unit})` : ''}</span>
       <input
         type="number"
         min="0"
@@ -58,9 +61,9 @@
         oninput={(event) => live(field, event.currentTarget)}
         onchange={(event) => commit(field, event.currentTarget)}
         aria-invalid={reasons[field.key] !== ''}
-        class="w-16 rounded-sm border bg-ground px-1.5 py-1 text-right text-xs text-ink {reasons[field.key] ? 'border-sun' : 'border-rule'}"
+        class="rounded-sm border bg-ground text-right text-ink {stacked ? 'h-9 w-full min-w-0 px-2 text-sm' : 'w-16 px-1.5 py-1 text-xs'} {reasons[field.key] ? 'border-sun' : 'border-rule'}"
       />
-      <span>{field.unit}</span>
+      {#if !stacked}<span>{field.unit}</span>{/if}
       {#if reasons[field.key]}<span class="text-sun" role="alert">{reasons[field.key]}</span>{/if}
     </label>
   {/each}

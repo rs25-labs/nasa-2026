@@ -103,7 +103,7 @@
       style="height: {HEADER_HEIGHT}px; padding-left: {LABEL_WIDTH}px; padding-right: {gutter}px;"
     >
       <span
-        class="absolute left-2 bottom-1 whitespace-nowrap text-[10px] leading-[12px]"
+        class="absolute left-2 bottom-1 whitespace-nowrap text-[11px] leading-[12px]"
         title="Rows in each block, top to bottom: Sun, Earth, battery charge"
       ><span class="text-sun">Sun</span> <span class="text-earth">Earth</span> <span class="text-ink">Battery</span></span>
       <div class="relative h-full" {@attach observeAxis}>
@@ -116,7 +116,7 @@
         {/each}
         {#each labelledTicks as tick (tick.index)}
           <span
-            class="absolute whitespace-nowrap pl-1 text-[11px] leading-[14px] text-muted"
+            class="absolute whitespace-nowrap pl-1 text-[12px] leading-[14px] text-muted"
             style="left: {(tick.index / lastIndex) * 100}%; bottom: 2px;"
           >{tick.label}</span>
         {/each}
@@ -159,7 +159,7 @@
     >
       <span
         aria-hidden="true"
-        class="pointer-events-none absolute top-0 whitespace-nowrap bg-ink px-1 text-[11px] leading-[14px] text-ground"
+        class="pointer-events-none absolute top-0 whitespace-nowrap bg-ink px-1 text-[12px] leading-[14px] text-ground"
         style="left: {percent}%; transform: translateX(-{percent}%); height: {TIME_LABEL_HEIGHT - 2}px;"
       >{timeText}</span>
       <span

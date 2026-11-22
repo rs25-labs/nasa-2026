@@ -8,6 +8,12 @@
   --color-muted: #9b9993;
   --color-sun: #f2b24a;
   --color-earth: #6ea8e0;
+  /* One colour per Plan section, kept apart from the Sun's orange and Earth's blue, which only ever mean data. */
+  --color-sec-date: #b49de0;
+  --color-sec-sites: #62c29f;
+  --color-sec-site: #e39aa8;
+  --color-sec-outpost: #c6d65a;
+  --color-sec-choice: #ecebe6;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --radius-sm: 2px;
 }
@@ -30,6 +36,14 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-earth);
   outline-offset: 2px;
+}
+
+/* The Plan screen reads one step larger than the rest of the app: its small labels and numbers are what planners compare. */
+.plan-type {
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
 }
 
 /* Always-visible scrollbars, so clipped content is never silent. */

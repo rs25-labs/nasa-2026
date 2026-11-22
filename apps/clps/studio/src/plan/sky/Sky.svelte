@@ -10,7 +10,8 @@
   type Centring = 'full' | 'sun' | 'earth';
   type Side = 'left' | 'right';
 
-  let { class: className = '' }: { class?: string } = $props();
+  /** sideBySide: the panorama and the elevation chart sit next to each other, for a wide, short panel. */
+  let { class: className = '', sideBySide = false }: { class?: string; sideBySide?: boolean } = $props();
 
   const { mission, estimates } = useSession();
 
@@ -38,7 +39,7 @@
   let bodyHeight = $state(0);
   // Below this height the elevation chart is dropped so the panorama keeps room, instead of scrolling.
   const MIN_BODY_FOR_ELEVATION_PX = 150;
-  const showElevation = $derived(bodyHeight === 0 || bodyHeight >= MIN_BODY_FOR_ELEVATION_PX);
+  const showElevation = $derived(sideBySide || bodyHeight === 0 || bodyHeight >= MIN_BODY_FOR_ELEVATION_PX);
 
   const selected = $derived(mission.selectedSiteId ? estimates.bySiteId[mission.selectedSiteId] : undefined);
   const result = $derived(okResult(selected));
@@ -264,13 +265,13 @@
 
 <section aria-label="Sky" class="flex min-h-0 min-w-0 flex-col overflow-hidden bg-panel {className}">
   <header class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-rule px-3 py-1.5">
-    <h2 class="truncate text-xs font-semibold">Sky{site ? `, ${siteLabel(site).short}` : ''}</h2>
+    <h2 class="truncate text-sm font-semibold">Sky{site ? `, ${siteLabel(site).short}` : ''}</h2>
     <div role="group" aria-label="View centring" class="flex border border-rule">
       {#each CENTRINGS as option (option.id)}
         <button
           type="button"
           aria-pressed={centring === option.id}
-          class="px-2 py-0.5 text-xs {centring === option.id ? 'bg-rule text-ink' : 'text-muted hover:text-ink'}"
+          class="px-2 py-0.5 text-[14px] {centring === option.id ? 'bg-rule text-ink' : 'text-muted hover:text-ink'}"
           onclick={() => (centring = option.id)}
         >
           {option.label}
@@ -288,8 +289,8 @@
       <p class="p-3 text-xs text-muted">…</p>
     {/if}
   {:else}
-    <div class="flex min-h-0 flex-1 flex-col" bind:clientHeight={bodyHeight}>
-    <div class="min-h-0 flex-[3_1_0]" bind:clientWidth={panoramaWidth} bind:clientHeight={panoramaHeight}>
+    <div class="flex min-h-0 flex-1 {sideBySide ? 'flex-row' : 'flex-col'}" bind:clientHeight={bodyHeight}>
+    <div class="min-h-0 min-w-0 {sideBySide ? 'flex-[1_1_0]' : 'flex-[3_1_0]'}" bind:clientWidth={panoramaWidth} bind:clientHeight={panoramaHeight}>
       {#if plotWidth > 0 && plotHeight > 0 && skyline && fullTracks && elapsedTracks && panoramaRange}
         <svg width={panoramaWidth} height={panoramaHeight} role="img" aria-label={description} class="block">
           <defs>
@@ -300,7 +301,7 @@
 
           {#each yGrid as line (line.value)}
             <line x1={LEFT} x2={LEFT + plotWidth} y1={line.y} y2={line.y} class="stroke-rule" stroke-width="1" />
-            <text x={LEFT - 4} y={line.y + 3} text-anchor="end" class="fill-muted text-[10px]">{formatDegrees(line.value, 0)}</text>
+            <text x={LEFT - 4} y={line.y + 3} text-anchor="end" class="fill-muted text-[12px]">{formatDegrees(line.value, 0)}</text>
           {/each}
 
           <g clip-path="url(#sky-plot-clip)">
@@ -363,18 +364,18 @@
             {/each}
           </g>
 
-          <text x={LEFT + plotWidth - 4} y={TOP + 10} text-anchor="end" class="fill-muted stroke-panel text-[10px] [paint-order:stroke]" stroke-width="3">
+          <text x={LEFT + plotWidth - 4} y={TOP + 10} text-anchor="end" class="fill-muted stroke-panel text-[12px] [paint-order:stroke]" stroke-width="3">
             <title>The vertical scale changes with the site</title>
             Vertical scale {rangeLabel(panoramaRange)}
           </text>
-          <text x={LEFT + plotWidth - 4} y={yOfPanorama(0) - 4} text-anchor="end" class="fill-muted stroke-panel text-[10px] [paint-order:stroke]" stroke-width="3">0° horizon level</text>
+          <text x={LEFT + plotWidth - 4} y={yOfPanorama(0) - 4} text-anchor="end" class="fill-muted stroke-panel text-[12px] [paint-order:stroke]" stroke-width="3">0° horizon level</text>
 
           {#each discs as disc (disc.id)}
             <text
               x={disc.side === 'right' ? disc.x + disc.radius + 4 : disc.x - disc.radius - 4}
               y={Math.max(TOP + 10, disc.y - disc.radius - 3)}
               text-anchor={disc.side === 'right' ? 'start' : 'end'}
-              stroke-width="3" class="stroke-panel text-[11px] [paint-order:stroke] {disc.id === 'Sun' ? 'fill-sun' : 'fill-earth'}"
+              stroke-width="3" class="stroke-panel text-xs [paint-order:stroke] {disc.id === 'Sun' ? 'fill-sun' : 'fill-earth'}"
             >
               {disc.id}{disc.view.state === 'visible' ? '' : `, ${visibilityWord(disc.view.state)}`}
             </text>
@@ -386,7 +387,7 @@
               x={tick.x}
               y={TOP + plotHeight + 13}
               text-anchor="middle"
-              class="text-[10px] {tick.label.length === 1 ? 'fill-ink' : 'fill-muted'}"
+              class="text-[12px] {tick.label.length === 1 ? 'fill-ink' : 'fill-muted'}"
             >
               {tick.label}
             </text>
@@ -396,12 +397,12 @@
     </div>
 
     {#if showElevation}
-    <div class="min-h-0 flex-[2_1_0] border-t border-rule" bind:clientWidth={elevationWidth} bind:clientHeight={elevationHeight}>
+    <div class="min-h-0 min-w-0 border-rule {sideBySide ? 'flex-[1_1_0] border-l' : 'flex-[2_1_0] border-t'}" bind:clientWidth={elevationWidth} bind:clientHeight={elevationHeight}>
       {#if elevationPlotWidth > 0 && elevationPlotHeight > 0 && stayLines}
         <svg width={elevationWidth} height={elevationHeight} role="img" aria-label="Elevation over the stay. {description}" class="block">
           {#each stayLines.grid as line (line.value)}
             <line x1={E_LEFT} x2={E_LEFT + elevationPlotWidth} y1={line.y} y2={line.y} class="stroke-rule" stroke-width="1" />
-            <text x={E_LEFT - 4} y={line.y + 3} text-anchor="end" class="fill-muted text-[10px]">{formatDegrees(line.value, 0)}</text>
+            <text x={E_LEFT - 4} y={line.y + 3} text-anchor="end" class="fill-muted text-[12px]">{formatDegrees(line.value, 0)}</text>
           {/each}
           <line
             x1={E_LEFT}
@@ -422,14 +423,14 @@
 
           {#each stayLines.days as day (day.x)}
             <line x1={day.x} x2={day.x} y1={E_TOP + elevationPlotHeight} y2={E_TOP + elevationPlotHeight + 3} class="stroke-muted" stroke-width="1" />
-            <text x={day.x} y={E_TOP + elevationPlotHeight + 13} text-anchor="middle" class="fill-muted text-[10px]">{day.label}</text>
+            <text x={day.x} y={E_TOP + elevationPlotHeight + 13} text-anchor="middle" class="fill-muted text-[12px]">{day.label}</text>
           {/each}
 
-          <text x={E_LEFT + elevationPlotWidth - 4} y={E_TOP + 10} text-anchor="end" class="fill-muted text-[10px]">
+          <text x={E_LEFT + elevationPlotWidth - 4} y={E_TOP + 10} text-anchor="end" class="fill-muted text-[12px]">
             <title>The vertical scale changes with the site</title>
             Vertical scale {rangeLabel(stayLines.range)}
           </text>
-          <g class="text-[10px]">
+          <g class="text-[12px]">
             <line x1={E_LEFT + 6} x2={E_LEFT + 22} y1={E_TOP + 8} y2={E_TOP + 8} class="stroke-sun" stroke-width="1.5" />
             <text x={E_LEFT + 26} y={E_TOP + 11} class="fill-muted">Sun</text>
             <line x1={E_LEFT + 52} x2={E_LEFT + 68} y1={E_TOP + 8} y2={E_TOP + 8} class="stroke-earth" stroke-width="1.5" />

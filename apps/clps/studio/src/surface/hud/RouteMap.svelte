@@ -6,10 +6,14 @@
   interface Props {
     originLatitudeDeg: number;
     originLongitudeDeg: number;
+    /** Shown size in CSS pixels; the map still draws at SIZE. */
+    displaySize?: number;
+    /** In a layout column rather than pinned to the bottom-left corner. */
+    inline?: boolean;
   }
-  const { originLatitudeDeg, originLongitudeDeg }: Props = $props();
+  const { originLatitudeDeg, originLongitudeDeg, displaySize = 280, inline = false }: Props = $props();
 
-  const SIZE = 280;
+  const SIZE = 322;
   const TILE = 257;
   /** Half-widths of the map, metres: the smallest that holds the rover, the target and the route. */
   const HALF_SPANS = [500, 1000, 2000, 4000, 9000] as const;
@@ -136,16 +140,16 @@
   const scaleM = $derived(half / 2);
 </script>
 
-<section class="absolute bottom-4 left-4 border border-[rgb(255_255_255/0.28)] bg-[rgb(6_8_10/0.8)] p-2 text-ink" aria-label="Route map">
+<section class="{inline ? 'w-full' : 'absolute bottom-4 left-4'} border border-[rgb(255_255_255/0.28)] bg-[rgb(6_8_10/0.8)] p-2 text-ink" aria-label="Route map">
   <div class="mb-1 flex items-baseline justify-between">
     <span class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Map</span>
     <span class="text-[11px] text-ink">
       <span style="color: #3ddc84">●</span> rover <span class="ml-2" style="color: #ff3b30">⊕</span> target
     </span>
   </div>
-  <canvas bind:this={canvas} width={SIZE} height={SIZE} class="block cursor-crosshair" style="width: {SIZE}px; height: {SIZE}px" onclick={pick} aria-label="Click to set the drive target"></canvas>
+  <canvas bind:this={canvas} width={SIZE} height={SIZE} class="mx-auto block cursor-crosshair" style="width: {displaySize}px; height: {displaySize}px" onclick={pick} aria-label="Click to set the drive target"></canvas>
   <div class="mt-1 flex items-center gap-2 text-[11px] text-ink">
-    <span class="block h-[3px] bg-ink" style="width: {SIZE / 4}px"></span>
+    <span class="block h-[3px] bg-ink" style="width: {displaySize / 4}px"></span>
     <span>{scaleM >= 1000 ? `${scaleM / 1000} km` : `${scaleM} m`}</span>
     <span class="ml-auto text-muted">click to set target</span>
   </div>

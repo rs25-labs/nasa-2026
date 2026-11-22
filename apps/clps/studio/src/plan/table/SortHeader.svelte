@@ -20,16 +20,17 @@
     onsort: () => void;
   } = $props();
 
-  const toneClass = $derived(tone === 'sun' ? 'text-sun' : tone === 'earth' ? 'text-earth' : 'text-ink');
+  const dotClass = $derived(tone === 'sun' ? 'bg-sun' : tone === 'earth' ? 'bg-earth' : '');
 </script>
 
 <button
   type="button"
   onclick={onsort}
   title={definition}
-  class="flex w-full flex-col px-1 py-1 leading-[14px] hover:bg-ground {align === 'right' ? 'items-end text-right' : 'items-start text-left'} {toneClass}"
+  class="flex w-full flex-col px-2 py-1 leading-4 hover:bg-ground {align === 'right' ? 'items-end text-right' : 'items-start text-left'} text-ink"
 >
-  <span class="flex items-center gap-1 whitespace-nowrap">
+  <span class="flex items-center gap-1.5 whitespace-nowrap">
+    {#if dotClass}<span aria-hidden="true" class="size-2 shrink-0 rounded-full {dotClass}"></span>{/if}
     {label}
     {#if marker !== null}
       <svg aria-hidden="true" viewBox="0 0 8 8" class="size-2 shrink-0 text-ink">
@@ -42,5 +43,5 @@
       <span class="sr-only">{marker}</span>
     {/if}
   </span>
-  <span class="whitespace-nowrap text-[11px] text-muted">{unit}</span>
+  <span class="whitespace-nowrap text-xs text-muted">{unit}</span>
 </button>

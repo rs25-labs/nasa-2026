@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { polarLatLon, polarXY } from '../../lib/geo/polar';
 import { drive } from '../../lib/mission/drive.svelte';
 import { LRV_CLASS, VIPER_CLASS } from '../../lib/mission/roverPower';
-import { actions, mission } from '../../lib/mission/store.svelte';
+import { mission } from '../../lib/mission/store.svelte';
 import type { SurfaceEngine } from '../core/engine';
 import type { HashView } from '../core/reviewHooks';
 import { overlayUniforms } from '../core/overlay';
@@ -82,7 +82,7 @@ export class DriveController {
   private azimuthPending = false;
   private headlightsBeforeStay: 'auto' | 'on' | 'off' | null = null;
   /** The mission clock and the drive's pause, as they were when Stay began. */
-  private beforeStay: { clockIndex: number; paused: boolean } | null = null;
+  private beforeStay: { paused: boolean } | null = null;
   private readonly key: string;
   private readonly origin: { x: number; y: number };
   private parked = false;
@@ -209,20 +209,23 @@ export class DriveController {
     }
     if (!drive.stay || drive.stayPaused || drive.menuOpen) return;
     const end = mission.days * 24;
-    const next = mission.clockIndex + (Math.min(deltaSeconds, 0.1) * drive.stayLapse) / 3600;
+    const next = drive.stayClockIndex + (Math.min(deltaSeconds, 0.1) * drive.stayLapse) / 3600;
     if (next >= end) {
-      actions.setClock(end);
+      drive.setStayClock(end);
       drive.stayPaused = true;
       return;
     }
-    actions.setClock(next);
+    drive.setStayClock(next);
   }
 
-  /** Camera to the base and the clock to the start of the stay; the rover's lamps stay off so the work lights own the beams. */
+  /**
+   * Camera to the base and the outpost clock to the start of the stay; the rover's lamps stay off so the work lights
+   * own the beams. The outpost runs on its own clock, so neither the plan's nor the drive's moves.
+   */
   private enterStay(restartClock: boolean): void {
     if (!drive.stay) {
       this.headlightsBeforeStay = drive.headlights;
-      this.beforeStay = { clockIndex: mission.clockIndex, paused: drive.paused };
+      this.beforeStay = { paused: drive.paused };
     }
     drive.headlights = 'off';
     drive.planning = false;
@@ -232,7 +235,7 @@ export class DriveController {
     drive.stayPaused = false;
     this.cameras.autoOrbit = true;
     this.azimuthPending = true;
-    if (restartClock) actions.setClock(0);
+    if (restartClock) drive.setStayClock(0);
     this.cameras.snap = true;
   }
 
@@ -240,7 +243,6 @@ export class DriveController {
     if (!drive.stay) return;
     drive.stay = false;
     if (this.beforeStay) {
-      actions.setClock(this.beforeStay.clockIndex);
       drive.paused = this.beforeStay.paused;
       this.beforeStay = null;
     }
@@ -263,11 +265,35 @@ export class DriveController {
     this.cameras.snap = true;
   }
 
-  private setTarget(x: number, z: number, latitudeDeg: number, longitudeDeg: number): void {
+  private recommendation = 0;
+
+  /**
+   * A new target replaces the old route, so Find route is the next step again, and gets its own slope advice: the
+   * lowest limit with a route, which also becomes the limit (the planner can still change it).
+   */
+  private setTarget(x: number, z: number, latitudeDeg: number, longitudeDeg: number, recommend = true): void {
     const range = Math.hypot(x, z);
     drive.target = { latitudeDeg, longitudeDeg, x, z, label: `${(range / 1000).toFixed(2)} km from the rover, ${latitudeDeg.toFixed(3)}°, ${longitudeDeg.toFixed(3)}°` };
     drive.error = null;
     this.overlay.setTarget(x, z);
+    this.sim.clearRoute();
+    drive.setRoute(null);
+    drive.paused = true;
+    drive.recommendedSlopeDeg = null;
+    if (recommend) void this.recommendSlope();
+  }
+
+  private async recommendSlope(): Promise<void> {
+    const target = drive.target;
+    if (!target) return;
+    const token = (this.recommendation += 1);
+    const isCurrent = (): boolean => token === this.recommendation && drive.target === target;
+    drive.recommending = true;
+    const slope = await this.sim.lowestRouteSlope(target, isCurrent);
+    if (!isCurrent()) return;
+    drive.recommending = false;
+    drive.recommendedSlopeDeg = slope;
+    if (typeof slope === 'number') drive.slopeLimitDeg = slope;
   }
 
   clearTarget(): void {
@@ -317,7 +343,11 @@ export class DriveController {
     if (view.speed !== null) drive.speedKmh = view.speed;
     if (view.headlights) drive.headlights = view.headlights;
     if (view.hud !== null) drive.hudVisible = view.hud;
-    if (view.clock !== null) actions.setClock(view.clock);
+    if (view.clock !== null && view.stay) drive.setStayClock(view.clock);
+    else if (view.clock !== null) {
+      drive.setClock(view.clock);
+      drive.departureChosen = true;
+    }
     if (view.camera) {
       if (view.camera === 'plan') drive.planning = true;
       else {
@@ -339,7 +369,7 @@ export class DriveController {
     if (view.drive) {
       this.rover.staging = true;
       const point = polarXY(view.drive[0], view.drive[1]);
-      this.setTarget(point.x - this.origin.x, -(point.y - this.origin.y), view.drive[0], view.drive[1]);
+      this.setTarget(point.x - this.origin.x, -(point.y - this.origin.y), view.drive[0], view.drive[1], false);
       await drive.commands?.findRoute();
       if (generation !== this.generation) return;
       if (drive.route) {

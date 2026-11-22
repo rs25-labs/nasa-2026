@@ -20,6 +20,20 @@ export interface BlockData {
   dayMarkIndexes: number[];
 }
 
+/** Heights in CSS pixels of the three rows of a block and the gap between them. */
+export interface BlockRows {
+  sun: number;
+  earth: number;
+  battery: number;
+  gap: number;
+}
+
+export const DEFAULT_ROWS: BlockRows = { sun: SUN_ROW, earth: EARTH_ROW, battery: BATTERY_ROW, gap: ROW_GAP };
+
+export function blockHeight(rows: BlockRows): number {
+  return BLOCK_PAD * 2 + rows.sun + rows.earth + rows.battery + rows.gap * 2;
+}
+
 const HOUR_MS = 3_600_000;
 const MIN_PARTIAL_ALPHA = 0.18;
 const EMPTY_KWH = 1e-6;
@@ -93,6 +107,7 @@ function drawBattery(
   data: BlockData,
   palette: Palette,
   top: number,
+  rowHeight: number,
   width: number,
   dpr: number,
 ): void {
@@ -102,12 +117,12 @@ function drawBattery(
   const scale = data.capacityKwh > 0 ? data.capacityKwh : Math.max(1, ...soc);
   const markHeight = 2;
   const plotTop = top * dpr;
-  const plotHeight = (BATTERY_ROW - markHeight - 1) * dpr;
+  const plotHeight = (rowHeight - markHeight - 1) * dpr;
   const baseline = plotTop + plotHeight;
 
   ctx.fillStyle = palette.rule;
   for (const index of data.dayMarkIndexes) {
-    ctx.fillRect(Math.min(width - dpr, xAt(index, lastIndex, width)), plotTop, dpr, (BATTERY_ROW - markHeight) * dpr);
+    ctx.fillRect(Math.min(width - dpr, xAt(index, lastIndex, width)), plotTop, dpr, (rowHeight - markHeight) * dpr);
   }
 
   const yAt = (kwh: number): number => baseline - (Math.min(scale, Math.max(0, kwh)) / scale) * plotHeight;
@@ -135,7 +150,7 @@ function drawBattery(
   ctx.stroke();
 
   ctx.fillStyle = palette.ink;
-  const markTop = top * dpr + (BATTERY_ROW - markHeight) * dpr;
+  const markTop = top * dpr + (rowHeight - markHeight) * dpr;
   for (let index = 1; index <= lastIndex; index += 1) {
     if ((soc[index] ?? 0) > EMPTY_KWH) continue;
     const left = xAt(index - 1, lastIndex, width);
@@ -150,6 +165,7 @@ export function drawBlock(
   cssHeight: number,
   palette: Palette,
   data: BlockData | null,
+  rows: BlockRows = DEFAULT_ROWS,
 ): void {
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   const width = Math.round(cssWidth * dpr);
@@ -161,19 +177,19 @@ export function drawBlock(
   ctx.clearRect(0, 0, width, height);
 
   const sunTop = BLOCK_PAD;
-  const earthTop = sunTop + SUN_ROW + ROW_GAP;
-  const batteryTop = earthTop + EARTH_ROW + ROW_GAP;
+  const earthTop = sunTop + rows.sun + rows.gap;
+  const batteryTop = earthTop + rows.earth + rows.gap;
 
   ctx.fillStyle = palette.ground;
-  ctx.fillRect(0, sunTop * dpr, width, SUN_ROW * dpr);
-  ctx.fillRect(0, earthTop * dpr, width, EARTH_ROW * dpr);
+  ctx.fillRect(0, sunTop * dpr, width, rows.sun * dpr);
+  ctx.fillRect(0, earthTop * dpr, width, rows.earth * dpr);
   if (!data) return;
 
   const lastIndex = data.sunFraction.length - 1;
-  drawStrip(ctx, data.sunFraction, palette.sun, sunTop, SUN_ROW, width, dpr);
-  drawStrip(ctx, data.earthFraction, palette.earth, earthTop, EARTH_ROW, width, dpr);
+  drawStrip(ctx, data.sunFraction, palette.sun, sunTop, rows.sun, width, dpr);
+  drawStrip(ctx, data.earthFraction, palette.earth, earthTop, rows.earth, width, dpr);
   ctx.strokeStyle = palette.ink;
-  drawEvents(ctx, data.events, 'SUN', data.startMs, lastIndex, width, sunTop, SUN_ROW, dpr);
-  drawEvents(ctx, data.events, 'EARTH', data.startMs, lastIndex, width, earthTop, EARTH_ROW, dpr);
-  drawBattery(ctx, data, palette, batteryTop, width, dpr);
+  drawEvents(ctx, data.events, 'SUN', data.startMs, lastIndex, width, sunTop, rows.sun, dpr);
+  drawEvents(ctx, data.events, 'EARTH', data.startMs, lastIndex, width, earthTop, rows.earth, dpr);
+  drawBattery(ctx, data, palette, batteryTop, rows.battery, width, dpr);
 }

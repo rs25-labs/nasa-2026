@@ -1,16 +1,43 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import { api } from '../../lib/api/client';
   import type { CatalogSite } from '../../lib/api/types';
-  import { formatDuration, formatPercent } from '../../lib/format';
+  import { formatDuration, formatPercent, formatUtc } from '../../lib/format';
+  import { okResult } from '../../lib/mission/derive';
+  import { bestDriveWindow, clearHoursFrom } from '../../lib/mission/driveTime';
+  import { estimates } from '../../lib/mission/estimates.svelte';
   import { greatCircleDistanceM } from '../../lib/geo/polar';
-  import { drive, LAPSE_OPTIONS, MAX_TARGET_RANGE_M, STAY_LAPSE_OPTIONS, type CameraKind } from '../../lib/mission/drive.svelte';
+  import {
+    drive,
+    LAPSE_OPTIONS,
+    MAX_SLOPE_LIMIT_DEG,
+    MAX_TARGET_RANGE_M,
+    STAY_LAPSE_OPTIONS,
+    STEEP_SLOPE_DEG,
+    type CameraKind,
+  } from '../../lib/mission/drive.svelte';
+  import { mission } from '../../lib/mission/store.svelte';
 
   interface Props {
     originLatitudeDeg: number;
     originLongitudeDeg: number;
+    /** The small map, drawn under the panel at the size the column has room for. */
+    map?: Snippet<[number]>;
   }
-  let { originLatitudeDeg, originLongitudeDeg }: Props = $props();
+  let { originLatitudeDeg, originLongitudeDeg, map }: Props = $props();
+
+  // The panel and the small map share the left column. The panel always shows in full; the map takes the height left
+  // over, down to a usable minimum, and is left out below that (Minimize gives it the room back).
+  /** The panel's width less the map box's padding and border, so the two line up. */
+  const MAP_FULL_PX = 322;
+  const MAP_MIN_PX = 140;
+  /** The map's title row, scale row, padding and border around the square. */
+  const MAP_CHROME_PX = 60;
+  const COLUMN_GAP_PX = 12;
+  let columnHeight = $state(0);
+  let panelHeight = $state(0);
+  const mapSize = $derived(Math.min(MAP_FULL_PX, Math.floor(columnHeight - panelHeight - COLUMN_GAP_PX - MAP_CHROME_PX)));
+  const mapShown = $derived(map !== undefined && mapSize >= MAP_MIN_PX);
 
   const cameras: { id: CameraKind; label: string; hint: string }[] = [
     { id: 'chase', label: 'Chase', hint: 'Follows behind the rover' },
@@ -20,6 +47,8 @@
   ];
 
   let nearby: { id: string; name: string; latitudeDeg: number; longitudeDeg: number; distanceM: number }[] = $state([]);
+  /** The list folds away by default so the panel leaves room for the small map. */
+  let nearbyOpen = $state(false);
 
   onMount(() => {
     const controller = new AbortController();
@@ -50,10 +79,121 @@
   const progress = $derived(total > 0 ? Math.min(1, t.progressM / total) : 0);
   const targetFar = $derived(drive.target !== null && greatCircleDistanceM({ latitudeDeg: originLatitudeDeg, longitudeDeg: originLongitudeDeg }, drive.target) > MAX_TARGET_RANGE_M);
 
+  /** The next thing to do: pick a target, then find a route; the Drive button below then takes over. */
+  const stepNow = $derived(!drive.target ? 1 : !route ? 4 : 0);
+
+  function stateOf(number: number): 'done' | 'now' | 'later' {
+    if (number === stepNow) return 'now';
+    // The departure is filled in from the start, with the recommended time.
+    if (number === 2) return 'done';
+    if (!drive.target) return 'later';
+    return number === 1 || number === 3 || route ? 'done' : 'later';
+  }
+
+  // Finished steps fold to one line; Change opens one again. A new target or route folds them all.
+  let opened = $state(new Set<number>());
+
+  $effect(() => {
+    void drive.target;
+    void route;
+    opened = new Set();
+    nearbyOpen = false;
+  });
+
+  function toggle(number: number): void {
+    const next = new Set(opened);
+    if (next.has(number)) next.delete(number);
+    else next.add(number);
+    opened = next;
+  }
+
+  const recommended = $derived(drive.recommendedSlopeDeg);
+  const limit = $derived(drive.slopeLimitDeg);
+  /** Something about the slope the planner should know before driving, or ''. */
+  const slopeWarning = $derived.by(() => {
+    if (recommended === 'none') return `No route even at ${MAX_SLOPE_LIMIT_DEG}°. Pick a different target.`;
+    if (typeof recommended === 'number' && recommended > STEEP_SLOPE_DEG) {
+      return `Steep: this target needs slopes of ${recommended}° or more. Above ${STEEP_SLOPE_DEG}° the rover risks sliding or tipping; consider a different target.`;
+    }
+    if (typeof recommended === 'number' && limit < recommended) return `Below ${recommended}° there is no route to this target.`;
+    if (limit > STEEP_SLOPE_DEG) return `A limit above ${STEEP_SLOPE_DEG}° lets the route use slopes that are steep for this rover.`;
+    return '';
+  });
+
+  // When to leave. The drive has its own clock; before the first drive it follows the recommended time.
+  const HOUR_MS = 3_600_000;
+  const stayStartMs = $derived(Date.parse(mission.startUtc));
+  const sky = $derived.by(() => {
+    const result = okResult(mission.selectedSiteId ? estimates.bySiteId[mission.selectedSiteId] : undefined);
+    return result ? { sun: result.series.sun.fraction, earth: result.series.earth.fraction } : null;
+  });
+  const bestWindow = $derived(sky ? bestDriveWindow(sky) : null);
+  const departureMs = $derived(stayStartMs + drive.clockIndex * HOUR_MS);
+  const onRecommended = $derived(bestWindow !== null && Math.abs(drive.clockIndex - bestWindow.startIndex) < 0.01);
+  /** The departure can change until the rover sets off on this route. */
+  const departureEditable = $derived(phase === 'idle' || phase === 'ready');
+
+  $effect(() => {
+    if (bestWindow && !drive.departureChosen && departureEditable) drive.setClock(bestWindow.startIndex);
+  });
+
+  function pickerValue(ms: number): string {
+    return new Date(ms).toISOString().slice(0, 16);
+  }
+
+  function setDeparture(input: HTMLInputElement): void {
+    const ms = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(input.value) ? Date.parse(`${input.value}:00Z`) : Number.NaN;
+    if (!Number.isFinite(ms)) {
+      input.value = pickerValue(departureMs);
+      return;
+    }
+    drive.departureChosen = true;
+    drive.setClock((ms - stayStartMs) / HOUR_MS);
+    input.value = pickerValue(stayStartMs + drive.clockIndex * HOUR_MS);
+    // The route's light and contact depend on when it starts, so a ready route is worked out again.
+    if (route) void drive.commands?.findRoute();
+  }
+
+  function useRecommended(): void {
+    if (!bestWindow) return;
+    drive.departureChosen = false;
+    drive.setClock(bestWindow.startIndex);
+    if (route) void drive.commands?.findRoute();
+  }
+
+  /** How long the Sun and Earth stay up from the departure, and whether the drive outlasts either. */
+  const clear = $derived(sky ? clearHoursFrom(sky, drive.clockIndex) : null);
+  const driveHours = $derived(route ? route.travel_seconds / 3600 : 0);
+  const timeWarning = $derived.by(() => {
+    if (!clear || !departureEditable) return '';
+    if (clear.sun === 0) return 'The Sun is down at this time: the rover runs on its battery from the start.';
+    if (route && driveHours > clear.sun) return `The Sun sets about ${Math.max(1, Math.floor(clear.sun))} h into this drive.`;
+    if (clear.earth === 0) return 'Earth is out of view at this time: no direct radio contact.';
+    if (route && driveHours > clear.earth) return `Earth goes out of view about ${Math.max(1, Math.floor(clear.earth))} h into this drive.`;
+    return '';
+  });
+
+  function hoursText(hours: number): string {
+    return hours >= 24 ? 'a day or more' : `${hours} h`;
+  }
+
+  const driveLabel = $derived(
+    phase === 'driving' ? 'Pause' : phase === 'arrived' ? 'Drive again' : phase === 'paused' ? 'Resume' : 'Drive selected route',
+  );
+
+  /** Why Drive cannot start yet, or ''. */
+  const waitingFor = $derived(
+    route ? '' : !drive.target ? 'Pick a target (step 1) and find a route (step 4).' : drive.routing ? 'Finding the route…' : 'Find a route (step 4) first.',
+  );
+
   function drivePressed(): void {
     if (phase === 'driving') drive.paused = true;
     else if (phase === 'paused') drive.paused = false;
-    else drive.commands?.start();
+    else {
+      // From here on the clock carries on from wherever the drives leave it.
+      drive.departureChosen = true;
+      drive.commands?.start();
+    }
   }
 </script>
 
@@ -131,62 +271,224 @@
         </span>
       {/each}
     </span>
-    <button type="button" class="rounded-sm border border-sun px-2 py-1 font-semibold text-sun hover:bg-rule" title="What a crew needs to stay here, and what to watch" onclick={() => drive.commands?.enterStay()}>Outpost plan</button>
+    <button type="button" class="rounded-sm border border-sun px-2 py-1 font-semibold text-sun hover:bg-rule" title="The outpost on the ground here, over a time-lapse of the stay" onclick={() => drive.commands?.enterStay()}>Outpost view</button>
     {/if}
     <span class="text-muted">Esc menu</span>
   </div>
 </div>
 
-{#if (drive.planning || drive.panelOpen) && !drive.stay}
-  <section class="absolute left-3 top-3 w-[300px] rounded-sm border-2 border-sun bg-[rgb(10_10_11/0.92)] p-3 text-xs text-ink" aria-label="Plan a drive">
-    <h2 class="mb-1 text-base font-bold">Plan a Drive</h2>
-    <p class="mb-2 text-muted">Click the map to set a target, or pick a site within 8 km.</p>
-    {#if nearby.length > 0}
-      <ul class="mb-2 max-h-28 overflow-y-auto border-y border-rule">
-        {#each nearby as site (site.id)}
-          <li>
-            <button type="button" class="flex w-full justify-between px-1 py-1 text-left hover:bg-rule" onclick={() => drive.commands?.setTargetFromSite(site.latitudeDeg, site.longitudeDeg)}>
-              <span class="truncate">{site.name}</span><span class="text-muted">{(site.distanceM / 1000).toFixed(1)} km</span>
-            </button>
-          </li>
-        {/each}
-      </ul>
+{#snippet step(number: number, title: string, colour: string, state: 'done' | 'now' | 'later', body: import('svelte').Snippet, summary: import('svelte').Snippet)}
+  <li
+    class="flex flex-col gap-2 rounded-sm border border-rule px-3 py-2 {state === 'later' ? 'opacity-55' : ''}"
+    style="border-left: 3px solid {colour};{state === 'now' ? ` background: color-mix(in srgb, ${colour} 12%, transparent);` : ''}"
+    aria-current={state === 'now' ? 'step' : undefined}
+  >
+    <h3 class="m-0 flex items-center gap-2 text-sm font-semibold text-ink">
+      <span
+        aria-hidden="true"
+        class="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-[#1a1a1a]"
+        style="background: {colour};"
+      >{state === 'done' ? '✓' : number}</span>
+      {title}
+      {#if state === 'done'}
+        <span class="sr-only">(done)</span>
+        <button
+          type="button"
+          class="ml-auto rounded-sm border border-rule px-2 py-0.5 text-xs font-normal text-muted hover:border-muted hover:text-ink"
+          aria-expanded={opened.has(number)}
+          onclick={() => toggle(number)}
+        >{opened.has(number) ? 'Done' : 'Change'}</button>
+      {/if}
+    </h3>
+    {#if state === 'now' || opened.has(number)}
+      {@render body()}
+    {:else if state === 'done'}
+      {@render summary()}
     {/if}
-    <p class="mb-2">{drive.target ? `Target: ${drive.target.label}` : 'No target yet.'}{#if targetFar}<span class="text-sun"> More than 8 km away.</span>{/if}</p>
-    <div class="mb-2 grid grid-cols-2 gap-2">
-      <label class="flex flex-col gap-1 text-muted">Speed, km/h
-        <input type="number" min="0.1" max={drive.settings.maxSpeedKmh} step="0.1" bind:value={drive.speedKmh} class="rounded-sm border border-rule bg-panel px-1 py-1 text-ink" />
-      </label>
-      <label class="flex flex-col gap-1 text-muted">Slope limit, °
-        <input type="number" min="1" max="35" step="1" bind:value={drive.slopeLimitDeg} class="rounded-sm border border-rule bg-panel px-1 py-1 text-ink" />
-      </label>
-    </div>
-    <div class="flex gap-2">
-      <!-- With a target and no route yet, Find route is the next step, so it takes the action colour. -->
-      <button
-        type="button"
-        class="rounded-sm border px-2 py-1 disabled:opacity-50 {drive.target && !route && !drive.routing
-          ? 'border-sun bg-sun font-semibold text-[#231c12] hover:bg-[#f6c672]'
-          : 'border-rule hover:bg-rule'}"
-        disabled={!drive.target || drive.routing}
-        onclick={() => void drive.commands?.findRoute()}
-      >
-        {drive.routing ? 'Finding route…' : 'Find route'}
-      </button>
-      <button type="button" class="rounded-sm border border-sun px-2 py-1 text-sun hover:bg-rule disabled:border-rule disabled:text-muted disabled:opacity-50" disabled={!route} onclick={() => drive.commands?.start()}>Drive</button>
-    </div>
-    {#if drive.error}<p class="mt-2 text-sun" role="alert">{drive.error}</p>{/if}
-    {#if route}
-      <dl class="mt-2 grid grid-cols-[110px_1fr] gap-x-2 border-t border-rule pt-2">
-        <dt class="text-muted">Route</dt><dd>{(route.distance_m / 1000).toFixed(2)} km, {formatDuration(route.travel_seconds * 1000)}</dd>
-        <dt class="text-muted">Steepest</dt><dd>{route.max_slope_deg.toFixed(1)}°</dd>
-        {#if prediction}
-          <dt class="text-muted">Lowest battery</dt>
-          <dd class={prediction.minFraction < 0.2 ? 'text-sun' : ''}>
-            {formatPercent(prediction.minFraction)} · {prediction.minKwh.toFixed(2)} kWh{#if prediction.emptyAtSeconds !== null} · flat after {formatDuration(prediction.emptyAtSeconds * 1000)}{/if}
-          </dd>
-        {/if}
-      </dl>
-    {/if}
-  </section>
+  </li>
+{/snippet}
+
+{#snippet targetBody()}
+  <p class="m-0 text-muted">Click the ground{mapShown ? ' or the small map' : ''}, or pick a nearby site.</p>
+  {#if nearby.length > 0}
+    <button type="button" class="self-start text-ink underline hover:text-sun" aria-expanded={nearbyOpen} onclick={() => (nearbyOpen = !nearbyOpen)}>
+      {nearbyOpen ? 'Hide nearby sites' : `Nearby sites within 8 km (${nearby.length})`}
+    </button>
+  {/if}
+  {#if nearby.length > 0 && nearbyOpen}
+    <ul class="m-0 list-none border-y border-rule p-0">
+      {#each nearby as site (site.id)}
+        <li>
+          <button type="button" class="flex w-full justify-between px-1 py-1 text-left hover:bg-rule" onclick={() => drive.commands?.setTargetFromSite(site.latitudeDeg, site.longitudeDeg)}>
+            <span class="truncate">{site.name}</span><span class="text-muted">{(site.distanceM / 1000).toFixed(1)} km</span>
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+  {#if drive.target}<p class="m-0">Target: <strong>{drive.target.label}</strong></p>{/if}
+{/snippet}
+
+{#snippet targetSummary()}
+  <p class="m-0">Target: <strong>{drive.target?.label}</strong>{#if targetFar}<span class="text-sun"> More than 8 km away.</span>{/if}</p>
+{/snippet}
+
+{#snippet slopeAdvice()}
+  {#if drive.recommending}
+    <p class="m-0 text-muted">Finding the lowest slope limit with a route…</p>
+  {:else if typeof recommended === 'number'}
+    <p class="m-0 text-muted">Recommended limit: <strong class="text-ink">{recommended}°</strong>, the lowest with a route to this target.</p>
+  {/if}
+  {#if slopeWarning}<p class="m-0 text-sun" role="alert">⚠ {slopeWarning}</p>{/if}
+{/snippet}
+
+{#snippet timeAdvice()}
+  {#if clear && departureEditable}
+    <p class="m-0 text-muted">From then: Sun up for {hoursText(clear.sun)}, Earth in view for {hoursText(clear.earth)}.</p>
+  {/if}
+  {#if timeWarning}<p class="m-0 text-sun" role="alert">⚠ {timeWarning}</p>{/if}
+{/snippet}
+
+{#snippet timeBody()}
+  <label class="flex flex-col gap-1 text-muted">Leave at (UTC)
+    <input
+      type="datetime-local"
+      step="3600"
+      min={pickerValue(stayStartMs)}
+      max={pickerValue(stayStartMs + mission.days * 24 * HOUR_MS)}
+      value={pickerValue(departureMs)}
+      disabled={!departureEditable}
+      onchange={(event) => setDeparture(event.currentTarget)}
+      class="h-8 rounded-sm border border-rule bg-panel px-2 text-ink [color-scheme:dark] disabled:opacity-60"
+    />
+  </label>
+  {#if bestWindow && !onRecommended && departureEditable}
+    <button type="button" class="self-start text-ink underline hover:text-sun" onclick={useRecommended}>Use the recommended time, {formatUtc(stayStartMs + bestWindow.startIndex * HOUR_MS)}</button>
+  {/if}
+  {@render timeAdvice()}
+{/snippet}
+
+{#snippet timeSummary()}
+  {#if departureEditable}
+    <p class="m-0 text-muted">{formatUtc(departureMs)}{#if onRecommended}&nbsp;(recommended){/if}</p>
+    {#if timeWarning}<p class="m-0 text-sun" role="alert">⚠ {timeWarning}</p>{/if}
+  {:else}
+    <p class="m-0 text-muted">Drive clock: {formatUtc(departureMs)}</p>
+  {/if}
+{/snippet}
+
+{#snippet limitsBody()}
+  <div class="grid grid-cols-2 gap-2">
+    <label class="flex flex-col gap-1 text-muted">Speed, km/h
+      <input type="number" min="0.1" max={drive.settings.maxSpeedKmh} step="0.1" bind:value={drive.speedKmh} class="h-8 rounded-sm border border-rule bg-panel px-2 text-ink" />
+    </label>
+    <label class="flex flex-col gap-1 text-muted">Slope limit, °
+      <input type="number" min="1" max={MAX_SLOPE_LIMIT_DEG} step="1" bind:value={drive.slopeLimitDeg} class="h-8 rounded-sm border border-rule bg-panel px-2 text-ink" />
+    </label>
+  </div>
+  {@render slopeAdvice()}
+{/snippet}
+
+{#snippet limitsSummary()}
+  <p class="m-0 text-muted">{drive.speedKmh} km/h, slopes up to {drive.slopeLimitDeg}°{#if recommended === drive.slopeLimitDeg}&nbsp;(recommended){/if}</p>
+  {#if drive.recommending || slopeWarning}{@render slopeAdvice()}{/if}
+{/snippet}
+
+{#snippet routeBody()}
+  <button
+    type="button"
+    class="h-9 self-start rounded-sm border px-4 text-sm disabled:opacity-50 {stepNow === 4 ? 'border-ink bg-ink font-semibold text-ground hover:opacity-90' : 'border-rule text-ink hover:bg-rule'}"
+    disabled={!drive.target || drive.routing || drive.recommending}
+    onclick={() => void drive.commands?.findRoute()}
+  >
+    {drive.routing ? 'Finding route…' : route ? 'Find the route again' : 'Find route'}
+  </button>
+  {#if drive.error && !route}
+    <p class="m-0 text-sun" role="alert">
+      {drive.error}
+      {#if /slope limit/i.test(drive.error) && !opened.has(3)}
+        <button type="button" class="text-ink underline hover:text-sun" onclick={() => toggle(3)}>Change the slope limit</button>
+      {/if}
+    </p>
+  {/if}
+  {#if route}{@render routeSummary()}{/if}
+{/snippet}
+
+{#snippet routeSummary()}
+  {#if route}
+    <p class="m-0 text-muted">{(route.distance_m / 1000).toFixed(2)} km, {formatDuration(route.travel_seconds * 1000)}, steepest {route.max_slope_deg.toFixed(1)}°{#if prediction}, lowest battery <span class={prediction.minFraction < 0.2 ? 'text-sun' : ''}>{formatPercent(prediction.minFraction)}</span>{/if}</p>
+  {/if}
+{/snippet}
+
+{#if !drive.stay}
+<div class="pointer-events-none absolute bottom-3 left-3 top-3 flex w-[340px] flex-col justify-between gap-3" bind:clientHeight={columnHeight}>
+  <div class="pointer-events-auto flex flex-col items-start" bind:clientHeight={panelHeight}>
+  {#if drive.panelOpen || drive.planning}
+    <section class="flex w-full flex-col rounded-sm border border-rule bg-[rgb(10_10_11/0.92)] text-sm text-ink" aria-label="Plan a drive">
+      <header class="flex items-center gap-2 px-3 pt-3">
+        <h2 class="m-0 text-lg font-bold">Plan a drive</h2>
+        <!-- The other thing to do at this site, not part of a drive: what a crew needs to stay here. -->
+        <button
+          type="button"
+          class="ml-auto shrink-0 rounded-sm border border-rule px-2 py-1 text-xs text-ink hover:border-muted"
+          title="The outpost on the ground here, over a time-lapse of the stay"
+          onclick={() => drive.commands?.enterStay()}
+        >See the outpost →</button>
+        <button
+          type="button"
+          class="shrink-0 rounded-sm border border-rule px-2 py-1 text-xs text-muted hover:border-muted hover:text-ink"
+          onclick={() => {
+            drive.panelOpen = false;
+            drive.commands?.closePlanning();
+          }}
+          title="Fold this panel into a small bar; click the bar to open it again"
+        >Minimize</button>
+      </header>
+      <ol class="m-0 flex list-none flex-col gap-2 p-3">
+        {@render step(1, 'Pick a target', 'var(--color-sec-date)', stateOf(1), targetBody, targetSummary)}
+        {@render step(2, 'When to leave', 'var(--color-sec-sites)', stateOf(2), timeBody, timeSummary)}
+        {@render step(3, 'Speed and slope limit', 'var(--color-sec-site)', stateOf(3), limitsBody, limitsSummary)}
+        {@render step(4, 'Find a route', 'var(--color-sec-choice)', stateOf(4), routeBody, routeSummary)}
+      </ol>
+      <!-- Always in view: the action the steps lead to, and anything stopping it. -->
+      <footer class="flex flex-col gap-2 border-t border-rule px-3 py-3" style="border-top-color: var(--color-sec-choice);">
+        <button
+          type="button"
+          class="h-10 rounded-sm border text-sm font-semibold disabled:cursor-not-allowed {route
+            ? 'border-ink bg-ink text-ground hover:opacity-90'
+            : 'border-rule text-muted'}"
+          disabled={!route || drive.routing}
+          title={waitingFor || undefined}
+          onclick={drivePressed}
+        >{drive.routing ? 'Finding the route…' : driveLabel}</button>
+        {#if drive.error && route}<p class="m-0 text-sun" role="alert">⚠ {drive.error}</p>{/if}
+      </footer>
+    </section>
+  {:else}
+    <button
+      type="button"
+      class="flex items-center gap-3 rounded-sm border border-rule bg-[rgb(10_10_11/0.92)] px-3 py-2 text-left text-sm text-ink hover:border-muted"
+      onclick={() => (drive.panelOpen = true)}
+      aria-label="Open Plan a drive"
+    >
+      <span class="whitespace-nowrap font-bold">Plan a drive</span>
+      <span class="whitespace-nowrap text-muted">{route ? (phase === 'driving' ? 'Driving' : 'Route ready') : drive.target ? 'Next: find a route' : 'Next: pick a target'}</span>
+      <span aria-hidden="true" class="text-muted">▸</span>
+    </button>
+  {/if}
+  </div>
+  {#if map && mapShown}
+    <div class="pointer-events-auto">{@render map(mapSize)}</div>
+  {:else if map && (drive.panelOpen || drive.planning)}
+    <!-- Too little height for the map under the open panel: say so, and fold the panel to make room. -->
+    <button
+      type="button"
+      class="pointer-events-auto self-start rounded-sm border border-rule bg-[rgb(10_10_11/0.92)] px-3 py-2 text-sm text-ink hover:border-muted"
+      onclick={() => {
+        drive.panelOpen = false;
+        drive.commands?.closePlanning();
+      }}
+    >Show the map <span class="text-muted">(folds this panel)</span></button>
+  {/if}
+</div>
 {/if}

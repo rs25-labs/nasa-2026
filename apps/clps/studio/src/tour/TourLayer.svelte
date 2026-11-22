@@ -53,6 +53,21 @@
     return () => cancelAnimationFrame(frame);
   });
 
+  // The Plan page scrolls, so bring each step's target into view once when the step opens.
+  $effect(() => {
+    const selectors = step?.targets ?? [];
+    const timer = setTimeout(() => {
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          return;
+        }
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  });
+
   /** The ring around the target, kept inside the window so all four edges show even for full-width panels. */
   const ring = $derived.by(() => {
     if (!target) return null;

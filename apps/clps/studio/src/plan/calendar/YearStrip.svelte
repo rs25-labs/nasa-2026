@@ -1,9 +1,7 @@
 <script lang="ts">
-  import { tick } from 'svelte';
   import { formatDate, formatEventUtc } from '../../lib/format';
-  import { clearComparison } from '../../lib/mission/estimates.svelte';
-  import { actions, END_MS, FIRST_START_MS, MAX_DAYS, MAX_MAST_M, MIN_DAYS, mission } from '../../lib/mission/store.svelte';
-  import { daysInYear, FIRST_YEAR, LAST_YEAR, stepYear, yearData, yearStartMs, yearView } from '../../lib/mission/year.svelte';
+  import { actions, END_MS, FIRST_START_MS, MAX_DAYS, MIN_DAYS, mission } from '../../lib/mission/store.svelte';
+  import { daysInYear, yearData, yearStartMs, yearView } from '../../lib/mission/year.svelte';
   import Busy from '../Busy.svelte';
   import EstimateStatus from '../EstimateStatus.svelte';
   import { drawYear, MONTH_NAMES, monthStartDays, YEAR_HEIGHT, MONTH_ROW, STRIP_ROW } from './draw';
@@ -28,7 +26,6 @@
   let width = $state(0);
   let drag = $state<Drag | null>(null);
   let hoverDay = $state<number | null>(null);
-  let errors = $state<{ landing: string; stay: string; mast: string }>({ landing: '', stay: '', mast: '' });
 
   const year = $derived(yearView.year);
   const dayCount = $derived(daysInYear(year));
@@ -156,24 +153,6 @@
     hoverDay = drag ? null : dayFromEvent(event);
   }
 
-  // A refused value keeps its reason on screen until the next valid edit of that field.
-  let latestError = $state<keyof typeof errors | null>(null);
-
-  function showError(field: keyof typeof errors, message: string): void {
-    errors[field] = message;
-    latestError = field;
-  }
-
-  const errorText = $derived((latestError && errors[latestError]) || errors.landing || errors.stay || errors.mast);
-
-  function validStay(input: HTMLInputElement): boolean {
-    return Number.isInteger(input.valueAsNumber) && input.valueAsNumber >= MIN_DAYS && input.valueAsNumber <= MAX_DAYS;
-  }
-
-  function validMast(input: HTMLInputElement): boolean {
-    return Number.isFinite(input.valueAsNumber) && input.valueAsNumber >= 0 && input.valueAsNumber <= MAX_MAST_M;
-  }
-
   const landingYear = $derived(new Date(mission.startUtc).getUTCFullYear());
   const outsideSide = $derived(!bracketVisible ? (endDay <= 0 ? 'left' : 'right') : null);
 
@@ -181,170 +160,15 @@
     yearView.year = landingYear;
   }
 
-  /** The date and time picker works in YYYY-MM-DDTHH:MM, which this app reads and writes as UTC. */
-  function pickerValue(ms: number): string {
-    return new Date(ms).toISOString().slice(0, 16);
-  }
-
-  /** The picked landing as UTC milliseconds rounded down to the hour, or the reason it is refused. */
-  function parseLanding(value: string): number | string {
-    const ms = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? Date.parse(`${value}:00Z`) : Number.NaN;
-    if (!Number.isFinite(ms)) return 'Pick a landing date and hour';
-    const hour = Math.floor(ms / HOUR_MS) * HOUR_MS;
-    if (hour < FIRST_START_MS || hour > END_MS - mission.days * DAY_MS) return 'Landing must be 1969 to 2035';
-    return hour;
-  }
-
-  function commitLanding(input: HTMLInputElement): void {
-    const parsed = parseLanding(input.value);
-    if (typeof parsed === 'string') {
-      showError('landing', parsed);
-      input.value = pickerValue(Date.parse(mission.startUtc));
-      return;
-    }
-    errors.landing = '';
-    commit(parsed, mission.days);
-  }
-
-  // Clear asks once more before throwing the plan away; the second click within a few seconds confirms.
-  let confirmingClear = $state(false);
-  let clearTimer: ReturnType<typeof setTimeout> | undefined;
-
-  async function onClear(): Promise<void> {
-    clearTimeout(clearTimer);
-    if (!confirmingClear) {
-      confirmingClear = true;
-      clearTimer = setTimeout(() => (confirmingClear = false), 4000);
-      return;
-    }
-    confirmingClear = false;
-    errors = { landing: '', stay: '', mast: '' };
-    actions.reset();
-    await tick();
-    clearComparison();
-    actions.notify('Cleared: back to the starter site, date and settings.');
-  }
-
-  function commitStay(input: HTMLInputElement): void {
-    const value = input.valueAsNumber;
-    if (!Number.isInteger(value) || value < MIN_DAYS || value > MAX_DAYS) {
-      showError('stay', `Stay must be ${MIN_DAYS}–${MAX_DAYS} days`);
-      input.value = String(mission.days);
-      return;
-    }
-    errors.stay = '';
-    commit(Date.parse(mission.startUtc), value);
-  }
-
-  function commitMast(input: HTMLInputElement): void {
-    const value = input.valueAsNumber;
-    if (!Number.isFinite(value) || value < 0 || value > MAX_MAST_M) {
-      showError('mast', `Mast must be 0–${MAX_MAST_M} m`);
-      input.value = String(mission.mastHeightM);
-      return;
-    }
-    errors.mast = '';
-    actions.setMastHeight(value);
-  }
-
-  // Fields sit 6 px apart and draw their focus ring tight to the box, so a ring never touches the next row.
-  const field = 'h-[22px] rounded-sm border bg-ground px-1.5 text-xs text-ink [color-scheme:dark] focus-visible:outline-offset-0';
-  const yearButton = 'rounded-sm px-1 text-[11px] leading-[14px] text-muted hover:text-ink disabled:opacity-30 disabled:hover:text-muted';
-  const CONTROLS_HEIGHT = 74;
 </script>
 
 <section
   aria-label="Landing window"
-  class="flex min-w-0 items-stretch gap-3 bg-panel px-3 {className}"
-  style="height: {Math.max(YEAR_HEIGHT + 4, CONTROLS_HEIGHT)}px;"
+  class="flex min-w-0 flex-col bg-panel px-5 pb-2 pt-3 {className}"
 >
-  <div class="flex w-[25rem] shrink-0 flex-col justify-start gap-1.5 py-1" data-tour="landing-controls">
-    <div class="flex items-center gap-2 text-xs text-muted">
-      <label for="landing-input" class="w-[5.5rem] shrink-0">Landing (UTC)</label>
-      <input
-        id="landing-input"
-        type="datetime-local"
-        step="3600"
-        min={pickerValue(FIRST_START_MS)}
-        max={pickerValue(END_MS - mission.days * DAY_MS)}
-        value={pickerValue(Date.parse(mission.startUtc))}
-        aria-invalid={errors.landing !== ''}
-        aria-describedby={errorText ? 'plan-field-error' : undefined}
-        onchange={(event) => commitLanding(event.currentTarget)}
-        class="{field} w-[12rem] {errors.landing ? 'border-sun' : 'border-rule'}"
-      />
-    </div>
-    <div class="flex items-center gap-4 text-xs">
-      <label class="flex items-center gap-1.5 text-muted">
-        <span>Stay</span>
-        <input
-          type="number"
-          min={MIN_DAYS}
-          max={MAX_DAYS}
-          step="1"
-          value={mission.days}
-          aria-invalid={errors.stay !== ''}
-          aria-describedby={errorText ? 'plan-field-error' : undefined}
-          oninput={(event) => {
-            if (validStay(event.currentTarget)) errors.stay = '';
-          }}
-          onchange={(event) => commitStay(event.currentTarget)}
-          class="{field} w-12 text-right {errors.stay ? 'border-sun' : 'border-rule'}"
-        />
-        <span class="text-muted">d</span>
-      </label>
-      <label class="flex items-center gap-1.5 text-muted">
-        <span>Crew</span>
-        <input
-          type="number"
-          min="1"
-          max="40"
-          step="1"
-          value={mission.crew}
-          onchange={(event) => {
-            const value = event.currentTarget.valueAsNumber;
-            if (Number.isFinite(value) && value >= 1 && value <= 40) actions.setCrew(value);
-            else event.currentTarget.value = String(mission.crew);
-          }}
-          class="{field} w-12 text-right border-rule"
-        />
-      </label>
-      <label class="flex items-center gap-1.5 text-muted">
-        <span>Mast</span>
-        <input
-          type="number"
-          min="0"
-          max={MAX_MAST_M}
-          step="0.5"
-          value={mission.mastHeightM}
-          aria-invalid={errors.mast !== ''}
-          aria-describedby={errorText ? 'plan-field-error' : undefined}
-          oninput={(event) => {
-            if (validMast(event.currentTarget)) errors.mast = '';
-          }}
-          onchange={(event) => commitMast(event.currentTarget)}
-          class="{field} w-14 text-right {errors.mast ? 'border-sun' : 'border-rule'}"
-        />
-        <span class="text-muted">m</span>
-      </label>
-      <button
-        type="button"
-        onclick={() => void onClear()}
-        title="Reset to the starter mission: one site, the starter date, stay, mast and power"
-        class="ml-auto h-[22px] rounded-sm border px-2 text-xs focus-visible:outline-offset-0 {confirmingClear
-          ? 'border-sun text-sun'
-          : 'border-rule text-ink hover:border-muted'}"
-      >{confirmingClear ? 'Click again to clear' : 'Clear'}</button>
-    </div>
-    <p id="plan-field-error" role="alert" class="m-0 min-h-[12px] truncate text-[11px] leading-[12px] text-sun">{errorText}</p>
-  </div>
-
-  <div class="flex shrink-0 flex-col text-xs" style="width: 5.5rem; padding-top: 2px;">
-    <div class="flex items-center justify-between" style="height: {MONTH_ROW}px;">
-      <button type="button" class={yearButton} disabled={year <= FIRST_YEAR} onclick={() => stepYear(-1)} aria-label="Previous year {year - 1}">{year - 1}</button>
-      <span class="text-[11px] font-semibold leading-[14px]">{year}</span>
-      <button type="button" class={yearButton} disabled={year >= LAST_YEAR} onclick={() => stepYear(1)} aria-label="Next year {year + 1}">{year + 1}</button>
-    </div>
+  <div class="flex min-w-0 items-stretch gap-3" style="height: {YEAR_HEIGHT + 2}px;">
+  <div class="flex shrink-0 flex-col text-[14px]" style="width: 4rem; padding-top: 2px;">
+    <div style="height: {MONTH_ROW}px;"></div>
     <div class="flex items-center text-sun" style="height: {STRIP_ROW + 1}px;">Sun</div>
     <div class="flex items-center text-earth" style="height: {STRIP_ROW}px;">Earth</div>
   </div>
@@ -362,7 +186,7 @@
     >
       {#each months as month, index (index)}
         <span
-          class="pointer-events-none absolute whitespace-nowrap pl-1 text-[11px] leading-[14px] text-muted"
+          class="pointer-events-none absolute whitespace-nowrap pl-1 text-xs leading-[14px] text-muted"
           style="left: {(month / dayCount) * 100}%; top: 0;"
         >{MONTH_NAMES[index]}</span>
       {/each}
@@ -392,7 +216,7 @@
       {#if outsideSide}
         <button
           type="button"
-          class="absolute z-10 flex items-center gap-1 whitespace-nowrap border border-ink bg-panel px-1.5 text-[11px] leading-[16px] text-ink hover:bg-rule"
+          class="absolute z-10 flex items-center gap-1 whitespace-nowrap border border-ink bg-panel px-1.5 text-[12px] leading-[16px] text-ink hover:bg-rule"
           style="top: {MONTH_ROW + 12}px; {outsideSide}: 0;"
           onclick={(event) => {
             event.stopPropagation();
@@ -409,7 +233,7 @@
         {#if drag}
           <span
             aria-hidden="true"
-            class="pointer-events-none absolute z-10 whitespace-nowrap bg-ink px-1 text-[11px] leading-[14px] text-ground"
+            class="pointer-events-none absolute z-10 whitespace-nowrap bg-ink px-1 text-[12px] leading-[14px] text-ground"
             style="top: 0; left: {bracketLeft * 100}%; transform: translateX(-{bracketLeft * 100}%); height: {MONTH_ROW}px;"
           >{dragText}</span>
         {/if}
@@ -451,5 +275,6 @@
     </div>
   </div>
 
-  <EstimateStatus class="w-72 shrink-0 pb-1" />
+  </div>
+  <EstimateStatus />
 </section>

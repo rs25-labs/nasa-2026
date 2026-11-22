@@ -92,7 +92,7 @@
         few hundred metres of a shadow edge.
       </p>
     </section>
-    <p class="m-0 border-t border-rule pt-2 text-[11px] leading-4 text-muted">
+    <p class="m-0 border-t border-rule pt-2 text-[12px] leading-4 text-muted">
       <span class="font-semibold">Model identifiers</span>
       Model: {identifiers.models.length ? identifiers.models.join(', ') : 'not loaded'}.
       Terrain: {identifiers.terrains.length ? identifiers.terrains.join(', ') : 'not loaded'}.

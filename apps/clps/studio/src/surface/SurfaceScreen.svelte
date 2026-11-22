@@ -111,8 +111,10 @@
       engine.setSky(null);
       return;
     }
-    const sun = sampleAt(result.series.sun, mission.clockIndex);
-    const earth = sampleAt(result.series.earth, mission.clockIndex);
+    // Drives and the outpost time-lapse each run on their own clock; only the plain viewer follows the plan's.
+    const clockIndex = controller ? (drive.stay ? drive.stayClockIndex : drive.clockIndex) : mission.clockIndex;
+    const sun = sampleAt(result.series.sun, clockIndex);
+    const earth = sampleAt(result.series.earth, clockIndex);
     engine.setSky({
       sunAzimuthDeg: sun.azimuthDeg,
       sunElevationDeg: sun.elevationDeg,
@@ -120,7 +122,7 @@
       earthAzimuthDeg: earth.azimuthDeg,
       earthElevationDeg: earth.elevationDeg,
       earthAngularRadiusDeg: earth.angularRadiusDeg,
-      clockIndex: mission.clockIndex,
+      clockIndex,
     });
     sunBearingDeg = sun.azimuthDeg + site.longitudeDeg;
     controller?.setSunFraction(sun.fraction);
@@ -231,6 +233,10 @@
   });
 </script>
 
+{#snippet routeMap(size: number)}
+  {#if site}<RouteMap originLatitudeDeg={site.latitudeDeg} originLongitudeDeg={site.longitudeDeg} displaySize={size} inline />{/if}
+{/snippet}
+
 {#if supported}
   <div class="relative h-full w-full select-none overflow-hidden">
     <canvas bind:this={canvas} class="block h-full w-full touch-none bg-ground {drive.planning ? 'cursor-crosshair' : ''}" aria-label="Surface view"></canvas>
@@ -245,8 +251,7 @@
       </button>
     {:else if controller && site}
       {#if drive.stay}<StayHud />{:else if drive.hudVisible}<Hud />{/if}
-      {#if !drive.stay && drive.hudVisible}<RouteMap originLatitudeDeg={site.latitudeDeg} originLongitudeDeg={site.longitudeDeg} />{/if}
-      <DriveControls originLatitudeDeg={site.latitudeDeg} originLongitudeDeg={site.longitudeDeg} />
+      <DriveControls originLatitudeDeg={site.latitudeDeg} originLongitudeDeg={site.longitudeDeg} map={drive.hudVisible ? routeMap : undefined} />
       {#if drive.menuOpen}<Menu onBackToPlan={backToPlan} />{/if}
     {/if}
     {#if failure}

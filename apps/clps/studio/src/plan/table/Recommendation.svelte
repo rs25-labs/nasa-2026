@@ -16,6 +16,9 @@
   /** A date is "already among the best" within this much of the top score. */
   const CLOSE = 0.03;
 
+  /** site: the best of the compared sites; date: the best landing date for the selected site. */
+  let { part }: { part: 'site' | 'date' } = $props();
+
   const percent = (fraction: number): string => `${Math.round(fraction * 100)}%`;
 
   const ranked = $derived.by(() => {
@@ -83,45 +86,49 @@
   }
 </script>
 
-<!-- The plan's answer on the left, and the export of the whole plan on the right. -->
-<div class="flex shrink-0 items-center gap-3 border-b border-rule border-l-4 border-l-sun bg-ground px-3 py-2 text-[13px] leading-5 text-ink">
-  <div class="min-w-0 flex-1" role="status" aria-label="Recommendation">
-    {#if bestSite}
-      <p class="m-0">
-        <span class="font-semibold uppercase tracking-wide text-sun">Recommended site</span>
-        <span class="ml-2 font-semibold">{siteLabel(bestSite.site).short}</span>
+{#snippet useButton(text: string, onclick: () => void)}
+  <button type="button" class="ml-2 rounded-sm border border-ink bg-ink px-2.5 py-0.5 text-sm font-semibold text-ground hover:opacity-90" {onclick}>{text}</button>
+{/snippet}
+
+{#if part === 'site' && bestSite}
+  <!-- A light callout on the dark page so the answer stands out; dark green text keeps it readable. -->
+  <p class="m-0 border-b border-rule bg-[#dff3ea] px-5 py-2.5 text-sm leading-6 text-[#0f2a1f]" role="status" aria-label="Recommendation">
+    <span class="font-bold">Recommended site:</span>
+    <span class="ml-1 font-bold">{siteLabel(bestSite.site).short}</span>
+    {#if bestSite.site.id === mission.selectedSiteId}<span class="font-semibold">(your choice)</span>{/if}
+    <span class="text-[#2c4d40]">
+      for this stay: sunlight {percent(bestSite.m.sunMeanFraction)}, Earth in view {percent(bestSite.m.earthMeanFraction)}, {batteryText(
+        bestSite.m.batteryHoursEmpty,
+        bestSite.m.batteryLowestKwh,
+      )}.
+    </span>
+    {#if bestSite.site.id !== mission.selectedSiteId}
+      <button
+        type="button"
+        class="ml-2 rounded-sm border border-[#0f2a1f] bg-[#0f2a1f] px-2.5 py-0.5 text-sm font-semibold text-[#dff3ea] hover:opacity-90"
+        onclick={() => actions.selectSite(bestSite.site.id)}
+      >Choose this site</button>
+    {/if}
+  </p>
+{:else if part === 'date' && selected}
+  <p class="m-0 border-t border-rule bg-ground px-5 py-2.5 text-sm leading-6 text-ink" role="status" aria-label="Best landing date">
+    <span class="font-semibold">Best landing date:</span>
+    {#if bestDate}
+      {#if bestDate.alreadyBest}
+        <span class="ml-1 text-muted">your date is among the best of {yearData.year} for {siteLabel(selected).short}.</span>
+      {:else}
+        <span class="ml-1 font-semibold">{bestDate.label}</span>
         <span class="text-muted">
-          for this stay: sunlight {percent(bestSite.m.sunMeanFraction)}, Earth in view {percent(bestSite.m.earthMeanFraction)}, {batteryText(
-            bestSite.m.batteryHoursEmpty,
-            bestSite.m.batteryLowestKwh,
-          )}.
+          for {siteLabel(selected).short}: about {percent(bestDate.sun)} sunlight and {percent(bestDate.earth)} Earth in view{#if bestDate.now}, against {percent(bestDate.now.sun)} and {percent(
+              bestDate.now.earth,
+            )} now{/if}.
         </span>
-        {#if bestSite.site.id !== mission.selectedSiteId}
-          <button type="button" class="ml-2 rounded-sm border border-sun px-2 text-xs font-semibold text-sun hover:bg-rule" onclick={() => actions.selectSite(bestSite.site.id)}>Select it</button>
-        {/if}
-      </p>
+        {@render useButton('Use this date', useDate)}
+      {/if}
+    {:else if yearData.status === 'error'}
+      <span class="ml-1 text-muted">the year scan failed.</span>
+    {:else}
+      <span class="ml-1 text-muted">scanning {yearData.year} for {siteLabel(selected).short}… {Math.round((yearData.loadedDays / Math.max(1, yearData.sun.length)) * 100)}%</span>
     {/if}
-    {#if selected}
-      <p class="m-0">
-        <span class="font-semibold uppercase tracking-wide text-sun">Best landing date</span>
-        {#if bestDate}
-          {#if bestDate.alreadyBest}
-            <span class="ml-2 text-muted">This date is among the best of {yearData.year} for {siteLabel(selected).short}.</span>
-          {:else}
-            <span class="ml-2 font-semibold">{bestDate.label}</span>
-            <span class="text-muted">
-              for {siteLabel(selected).short}: about {percent(bestDate.sun)} sunlight and {percent(bestDate.earth)} Earth in view{#if bestDate.now}, against {percent(bestDate.now.sun)} and {percent(
-                  bestDate.now.earth,
-                )} now{/if}.
-            </span>
-            <button type="button" class="ml-2 rounded-sm border border-sun bg-sun px-2 text-xs font-semibold text-black hover:opacity-90" onclick={useDate}>Use this date</button>
-          {/if}
-        {:else if yearData.status === 'error'}
-          <span class="ml-2 text-muted">The year scan failed.</span>
-        {:else}
-          <span class="ml-2 text-muted">Scanning {yearData.year} for {siteLabel(selected).short}… {Math.round((yearData.loadedDays / Math.max(1, yearData.sun.length)) * 100)}%</span>
-        {/if}
-      </p>
-    {/if}
-  </div>
-</div>
+  </p>
+{/if}

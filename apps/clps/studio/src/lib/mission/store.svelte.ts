@@ -180,9 +180,13 @@ export function restoreState(raw: unknown): MissionState {
   };
 }
 
+/** How the mission was found on page load: a shared link, this browser's saved plan, or neither. */
+export let loadedFrom: 'share' | 'saved' | 'none' = 'none';
+
 function load(): MissionState {
   const shared = decodeShare(window.location.hash);
   if (shared !== null) {
+    loadedFrom = 'share';
     // A shared link wins over the stored session. Drop the query so later edits are not undone by a reload.
     const route = window.location.hash.replace(/\?.*$/, '') || '#/plan';
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${route}`);
@@ -190,6 +194,7 @@ function load(): MissionState {
   }
   try {
     const text = window.localStorage.getItem(STORAGE_KEY);
+    if (text) loadedFrom = 'saved';
     return text ? restoreState(JSON.parse(text)) : defaultState();
   } catch {
     return defaultState();

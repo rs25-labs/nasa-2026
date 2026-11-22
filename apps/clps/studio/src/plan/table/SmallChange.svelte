@@ -132,8 +132,8 @@
 </script>
 
 {#if text}
-  <p class="m-0 shrink-0 border-t border-rule px-3 py-1 text-xs text-ink" role="status">
-    <span class="font-semibold text-sun">Impact of Small Changes to Plan:</span>
+  <p class="m-0 shrink-0 border-t border-rule bg-[#f3f1ea] px-5 py-2.5 text-[14px] text-[#1a1a1a]" role="status" aria-label="Small changes">
+    <span class="font-bold">If you change the plan a little:</span>
     {text}
   </p>
 {/if}

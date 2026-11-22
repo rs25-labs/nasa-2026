@@ -1,7 +1,7 @@
 import type { Palette } from '../timeline/draw';
 
-export const MONTH_ROW = 14;
-export const STRIP_ROW = 20;
+export const MONTH_ROW = 16;
+export const STRIP_ROW = 28;
 export const YEAR_HEIGHT = MONTH_ROW + STRIP_ROW * 2 + 1;
 export const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

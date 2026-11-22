@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { api, ApiError } from '../../lib/api/client';
 import type { DriveQuery, WaypointResponse } from '../../lib/api/types';
 import { polarLatLon, polarXY } from '../../lib/geo/polar';
-import { drive, type BodyStatus, type Telemetry } from '../../lib/mission/drive.svelte';
+import { drive, MAX_SLOPE_LIMIT_DEG, type BodyStatus, type Telemetry } from '../../lib/mission/drive.svelte';
 import { environmentAt, type EnvironmentSample } from '../../lib/mission/driveEnvironment';
 import {
   loadWatts,
@@ -13,7 +13,7 @@ import {
   type PowerPrediction,
   type PowerSample,
 } from '../../lib/mission/roverPower';
-import { actions, mission } from '../../lib/mission/store.svelte';
+import { mission } from '../../lib/mission/store.svelte';
 import type { GroundQuery } from '../core/types';
 import { ROVER } from '../rover/model';
 import { RoverDynamics } from '../rover/dynamics';
@@ -154,9 +154,9 @@ export class DriveSim {
     this.startKwh = this.batteryKwh;
   }
 
-  /** Mission clock now, UTC ms. */
+  /** The drive's clock now, UTC ms (its own clock, not the Plan screen's). */
   get clockUtcMs(): number {
-    return Date.parse(mission.startUtc) + mission.clockIndex * HOUR_MS;
+    return Date.parse(mission.startUtc) + drive.clockIndex * HOUR_MS;
   }
 
   get speedSettingMs(): number {
@@ -316,9 +316,46 @@ export class DriveSim {
     drive.routing = false;
   }
 
+  /** The lowest whole-degree slope limit with a route from the rover to the target, or 'none'. */
+  async lowestRouteSlope(target: { latitudeDeg: number; longitudeDeg: number }, isCurrent: () => boolean): Promise<number | 'none' | null> {
+    const here = this.latLon(this.x, this.z);
+    const speed = Math.min(drive.speedKmh, drive.settings.maxSpeedKmh);
+    const routes = async (slope: number): Promise<boolean | null> => {
+      try {
+        await api.expeditionRoute({
+          latitude: here.latitudeDeg,
+          longitude: here.longitudeDeg,
+          target_latitude: target.latitudeDeg,
+          target_longitude: target.longitudeDeg,
+          slope,
+          speed,
+        });
+        return true;
+      } catch (cause) {
+        if (cause instanceof ApiError && cause.status >= 400 && cause.status < 500 && cause.status !== 409) return false;
+        return null;
+      }
+    };
+    const top = await routes(MAX_SLOPE_LIMIT_DEG);
+    if (top === null || !isCurrent()) return null;
+    if (!top) return 'none';
+    // A higher limit never removes a route, so search for the lowest limit that has one.
+    let low = 1;
+    let high = MAX_SLOPE_LIMIT_DEG;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      const found = await routes(middle);
+      if (found === null || !isCurrent()) return null;
+      if (found) high = middle;
+      else low = middle + 1;
+    }
+    return high;
+  }
+
   /** Begin the autopilot from the rover's place on the route. */
   start(): void {
     if (!this.path) return;
+    drive.error = null;
     if (this.arrived) this.restart();
     drive.mode = 'auto';
     drive.paused = false;
@@ -341,7 +378,7 @@ export class DriveSim {
     this.batteryKwh = this.startKwh;
     this.batteryFlat = false;
     const hours = (this.departureMs - Date.parse(mission.startUtc)) / HOUR_MS;
-    actions.setClock(hours);
+    drive.setClock(hours);
     this.placeOnPath(0);
     this.rover.clearTracks();
     this.rover.clearDust();
@@ -360,7 +397,7 @@ export class DriveSim {
     this.s = s;
     this.placeOnPath(s);
     const elapsed = s / this.speedSettingMs;
-    actions.setClock((this.departureMs + elapsed * 1000 - Date.parse(mission.startUtc)) / HOUR_MS);
+    drive.setClock((this.departureMs + elapsed * 1000 - Date.parse(mission.startUtc)) / HOUR_MS);
     this.batteryKwh = this.energyAt(s);
     this.rover.clearTracks();
     this.layTrackHistory(s);
@@ -440,7 +477,7 @@ export class DriveSim {
     this.arrived = false;
     drive.arrived = false;
     const hours = (this.departureMs - Date.parse(mission.startUtc)) / HOUR_MS + s / this.speedSettingMs / 3600;
-    actions.setClock(hours);
+    drive.setClock(hours);
     this.batteryKwh = this.energyAt(s);
     this.rover.clearTracks();
     this.rover.clearDust();
@@ -486,10 +523,10 @@ export class DriveSim {
       }
       visualSpeed = dt > 0 ? moved / dt : 0;
       const hours = (this.clockMs - Date.parse(mission.startUtc)) / HOUR_MS;
-      if (this.clockMs !== startClock) actions.setClock(hours);
+      if (this.clockMs !== startClock) drive.setClock(hours);
       if (hours >= mission.days * 24 - 1e-6 && this.clockMs > startClock) {
         drive.paused = true;
-        drive.error = 'The mission window ends here. Lengthen the stay in Plan to keep driving.';
+        drive.error = 'The stay ends here. Pick an earlier departure, or lengthen the stay in Plan.';
       }
     } else {
       this.speed = 0;
@@ -534,7 +571,7 @@ export class DriveSim {
         rover.advanceDust(dt);
       }
       const hours = (this.clockMs - Date.parse(mission.startUtc)) / HOUR_MS;
-      actions.setClock(hours);
+      drive.setClock(hours);
     }
     rover.setDustPaused(true);
     this.speed = 0;

@@ -14,25 +14,25 @@
     return '';
   });
 
-  const link = 'shrink-0 rounded-sm border border-rule bg-ground px-1.5 text-[11px] leading-[16px] text-ink hover:border-muted';
+  const link = 'shrink-0 rounded-sm border border-rule bg-ground px-1.5 text-xs leading-[18px] text-ink hover:border-muted';
 </script>
 
-<div class="flex min-w-0 flex-col items-end justify-end gap-px text-xs {className}" role="status" aria-live="polite">
+<div class="flex h-6 min-w-0 items-center justify-end gap-4 text-[14px] {className}" role="status" aria-live="polite">
   {#if status.text}
-    <p class="m-0 flex max-w-full items-center gap-1.5 text-ink">
+    <p class="m-0 flex min-w-0 items-center gap-1.5 text-ink">
       <span class="truncate" title={status.text}>{status.text}</span>
       {#if status.undoable}<button type="button" class={link} onclick={actions.undoRemove}>Undo</button>{/if}
     </p>
   {/if}
   {#if comparison.active}
-    <p class="m-0 flex max-w-full items-center gap-1.5 text-muted">
+    <p class="m-0 flex min-w-0 items-center gap-1.5 text-muted">
       <span class="truncate" title="Compared with {comparison.label}">Compared with {comparison.label}</span>
       <button type="button" class={link} onclick={clearComparison}>Clear</button>
     </p>
   {/if}
   {#if estimates.status === 'loading'}
-    <Busy {text} class="max-w-full truncate" />
+    <Busy {text} class="shrink-0" />
   {:else}
-    <p class="m-0 max-w-full truncate {estimates.status === 'error' ? 'text-sun' : 'text-muted'}" title={text}>{text}</p>
+    <p class="m-0 shrink-0 {estimates.status === 'error' ? 'min-w-0 truncate text-sun' : 'text-muted'}" title={text}>{text}</p>
   {/if}
 </div>

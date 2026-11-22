@@ -62,7 +62,7 @@
   popovertarget="export-menu"
   aria-haspopup="menu"
   data-tour="export"
-  class="whitespace-nowrap rounded-sm border border-sun bg-panel px-4 py-1 text-[15px] font-semibold text-sun hover:bg-rule"
+  class="whitespace-nowrap rounded-sm border border-sun bg-panel px-4 py-1 text-[17px] font-semibold text-sun hover:bg-rule"
 >Export Mission Plan ↓</button>
 <span class="sr-only" role="status">{copied === 'done' ? 'Share link copied' : copied === 'failed' ? 'Copy failed' : ''}</span>
 

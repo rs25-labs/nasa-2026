@@ -1,6 +1,7 @@
 import type { DriveResponse } from '../api/types';
 import { environmentSamples, type EnvironmentSample } from './driveEnvironment';
 import { CREW_CLASS, type PowerPrediction, type RoverSettings } from './roverPower';
+import { mission } from './store.svelte';
 
 export type CameraKind = 'chase' | 'driver' | 'mast' | 'orbit';
 export type DriveMode = 'auto' | 'manual';
@@ -15,6 +16,10 @@ export const STAY_LAPSE_OPTIONS = [600, 3600, 21600] as const;
 export const DEFAULT_STAY_LAPSE = 3600;
 export const DEFAULT_SPEED_KMH = 6;
 export const DEFAULT_SLOPE_LIMIT_DEG = 15;
+/** The route service accepts slope limits up to this. */
+export const MAX_SLOPE_LIMIT_DEG = 35;
+/** Above this a route is flagged as steep: wheel slip and tipping risk grow quickly for a loaded crew rover. */
+export const STEEP_SLOPE_DEG = 20;
 /** Targets are limited by the route service to about this far from the start. */
 export const MAX_TARGET_RANGE_M = 8000;
 
@@ -104,6 +109,18 @@ class DriveState {
 
   speedKmh = $state(DEFAULT_SPEED_KMH);
   slopeLimitDeg = $state(DEFAULT_SLOPE_LIMIT_DEG);
+  /**
+   * The drive's own clock, in hours from the landing time. It is separate from the Plan screen's clock: playing the
+   * plan never moves a drive, and driving never moves the plan. Before a drive starts it is the departure time.
+   */
+  clockIndex = $state(0);
+  /** The outpost time-lapse's own clock, in hours from the landing time; separate from the plan's and the drive's. */
+  stayClockIndex = $state(0);
+  /** The planner picked the departure; until then it follows the recommended drive time. */
+  departureChosen = $state(false);
+  /** The lowest slope limit with a route to the target, or null while unknown; 'none' when even the maximum has none. */
+  recommendedSlopeDeg = $state<number | 'none' | null>(null);
+  recommending = $state(false);
   settings = $state<RoverSettings>({ ...CREW_CLASS });
 
   /** Target in scene metres and degrees. */
@@ -163,9 +180,24 @@ class DriveState {
     this.telemetry = value;
   }
 
+  /** Move the drive clock, kept inside the stay (the sky data covers the stay only). */
+  setClock(hours: number): void {
+    this.clockIndex = Math.max(0, Math.min(mission.days * 24, Number.isFinite(hours) ? hours : 0));
+  }
+
+  /** Move the outpost time-lapse clock, kept inside the stay. */
+  setStayClock(hours: number): void {
+    this.stayClockIndex = Math.max(0, Math.min(mission.days * 24, Number.isFinite(hours) ? hours : 0));
+  }
+
   reset(): void {
     this.setRoute(null);
     this.target = null;
+    this.clockIndex = 0;
+    this.stayClockIndex = 0;
+    this.departureChosen = false;
+    this.recommendedSlopeDeg = null;
+    this.recommending = false;
     this.error = null;
     this.paused = true;
     this.mode = 'auto';
